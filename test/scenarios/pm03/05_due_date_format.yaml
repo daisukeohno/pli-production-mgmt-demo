@@ -1,0 +1,26 @@
+id: PM03-05
+title: 完成予定日フォーマット不正（M016）
+screen: PM03
+status: pending
+source: docs/design.md §4 PM03-5
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm03 }
+    expect: { status: 200 }
+  - name: 2026/12/01 は M016
+    request:
+      path: /api/pm03
+      body: { aid: ENTER, itemCd: '10000014', orderQty: '1', dueDate: '2026/12/01' }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M016 }
+        - { path: $.fieldPos, equals: F-DUEDATE }
+  - name: 存在しない日付 2026-02-30 も M016
+    request:
+      path: /api/pm03
+      body: { aid: ENTER, itemCd: '10000014', orderQty: '1', dueDate: '2026-02-30' }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M016 }

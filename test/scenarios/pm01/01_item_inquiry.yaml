@@ -1,0 +1,75 @@
+id: PM01-01
+title: 品目照会（正常系）
+screen: PM01
+status: active
+source: docs/design.md §4 PM01-1
+description: >
+  初回起動で一覧1頁目（10行）が表示され、機能コード1で品目を照会すると
+  品目名・区分・単位が表示されること。存在しない品目は M002。
+steps:
+  - name: 初回起動（CA-FIRST-TIME='Y'）
+    request: { method: GET, path: /api/pm01 }
+    expect:
+      status: 200
+      body:
+        - { path: $.scrnId, equals: PM01 }
+        - { path: $.sysDate, matches: '\d{4}/\d{2}/\d{2}' }
+        - { path: $.msgId, isNull: true }
+        - { path: $.pageNo, equals: 1 }
+        - { path: $.list, size: 10 }
+        - { path: '$.list[0].itemCd', equals: '10000014' }
+
+  - name: 機能1 照会（20000059）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '20000059' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, isNull: true }
+        - { path: $.fields.itemCd, equals: '20000059' }
+        - { path: $.fields.itemName, equals: ベアリング6204 }
+        - { path: $.fields.itemKbn, equals: '2' }
+        - { path: $.fields.stockUnit, equals: 個 }
+
+  - name: 末尾空白付き入力も CHAR 比較で一致する
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '90000010', itemName: '' }
+    expect:
+      status: 200
+      body:
+        - { path: $.fields.itemName, equals: 潤滑グリース }
+        - { path: $.fields.itemKbn, equals: '9' }
+        - { path: $.fields.stockUnit, equals: KG }
+
+  - name: 存在しない品目は M002
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '20000004' }
+    expect:
+      status: 404
+      body:
+        - { path: $.msgId, equals: M002 }
+        - { path: $.msgText, equals: 該当する品目は登録されていません。 }
+        - { path: $.fieldPos, equals: F-ITEMCD }
+
+  - name: 品目コード未入力は M004
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '' }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M004 }
+        - { path: $.fieldPos, equals: F-ITEMCD }
+
+  - name: 機能コード未入力は M004（F-FUNC）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '', itemCd: '20000059' }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M004 }
+        - { path: $.fieldPos, equals: F-FUNC }

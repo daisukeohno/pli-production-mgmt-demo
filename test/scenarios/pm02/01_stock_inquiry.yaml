@@ -1,0 +1,28 @@
+id: PM02-01
+title: 在庫照会（正常系）
+screen: PM02
+status: pending
+source: docs/design.md §4 PM02-1
+description: 品目コードを入力すると品目名と現在庫数量が表示される。
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm02 }
+    expect: { status: 200 }
+  - name: 照会（20000011）
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '20000011' }
+    expect:
+      status: 200
+      body:
+        - { path: $.fields.itemName, equals: 主軸アセンブリ }
+        - { path: $.fields.stockQty, equals: 120 }
+  - name: 存在しない品目は M002
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '20000004' }
+    expect:
+      status: 404
+      body:
+        - { path: $.msgId, equals: M002 }
+        - { path: $.fieldPos, equals: F-ITEMCD }

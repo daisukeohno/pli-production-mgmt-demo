@@ -1,0 +1,18 @@
+id: PM03-06
+title: 存在しない製品コードでの登録（M002）
+screen: PM03
+status: pending
+source: docs/design.md §4 PM03-6
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm03 }
+    expect: { status: 200 }
+  - name: 未登録 10000007 は M002
+    request:
+      path: /api/pm03
+      body: { aid: ENTER, itemCd: '10000007', orderQty: '1', dueDate: '2026-12-01' }
+    expect:
+      status: 404
+      body:
+        - { path: $.msgId, equals: M002 }
+        - { path: $.fieldPos, equals: F-ITEMCD }

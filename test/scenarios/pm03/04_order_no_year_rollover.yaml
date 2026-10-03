@@ -1,0 +1,30 @@
+id: PM03-04
+title: 製造指示番号の年度またぎ採番確認
+screen: PM03
+status: pending
+source: docs/design.md §4 PM03-4 / §2 ルール7
+description: >
+  製造指示番号 = 'W' + 西暦下2桁 + 4桁連番。SEQ_CTL.SEQ_YY と現在年が異なる場合は連番を 0001 から振り直す想定。
+  ※ design.md は「西暦下2桁」、DDL コメントは「年度下2桁」で表記揺れあり。PM03 実装時に確定させること。
+  ※ SEQ_CTL 採番は PM03 スコープのため、今回（PM01 パイロット）では未実装。
+preconditions:
+  - システム時計を 2027-01-04（JST）に固定できること（PM03 実装時に Clock 差し替えをランナーへ追加）
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm03 }
+    expect: { status: 200 }
+  - name: 登録 → W270001
+    request:
+      path: /api/pm03
+      body: { aid: ENTER, itemCd: '10000014', orderQty: '1', dueDate: '2027-02-01' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M013 }
+        - { path: $.fields.orderNo, equals: W270001 }
+  - name: SEQ_CTL が新年度で更新
+    db:
+      sql: "SELECT SEQ_YY, SEQ_NO FROM SANSEKI.SEQ_CTL WHERE SEQ_NAME = 'WORK_ORDER'"
+      expect:
+        - { path: '$[0].SEQ_YY', equals: '27' }
+        - { path: '$[0].SEQ_NO', equals: 1 }

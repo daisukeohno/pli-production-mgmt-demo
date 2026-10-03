@@ -1,0 +1,23 @@
+id: PM02-03
+title: 出庫登録（在庫十分）
+screen: PM02
+status: pending
+source: docs/design.md §4 PM02-3
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm02 }
+    expect: { status: 200 }
+  - name: 出庫 20000059 から 50（在庫 200）
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '20000059', ioKbn: '2', ioQty: '50' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M012 }
+        - { path: $.fields.stockQty, equals: 150 }
+  - name: DB 在庫 150
+    db:
+      sql: "SELECT STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000059'"
+      expect:
+        - { path: '$[0].STOCK_QTY', equals: 150 }

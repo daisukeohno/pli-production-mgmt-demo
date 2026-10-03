@@ -1,0 +1,104 @@
+id: PM01-06
+title: PF7/PF8によるページング確認
+screen: PM01
+status: active
+source: docs/design.md §1 PM01（10行/頁 PF7:前頁 PF8:次頁）/ §4 PM01-6
+description: >
+  一覧は 10 行/頁（旧仕様の 20 件/頁は採用しない）。初期データ 15 件 → 1頁目 10 件、2頁目 5 件。
+  PF8/PF7 は CA01-TOP-ITEM-CD 起点のキーセットで頁移動し、OFFSET を使わないため
+  他端末が前方に品目を追加しても表示中の頁先頭はずれない。
+steps:
+  - name: 初回起動 1頁目
+    request: { method: GET, path: /api/pm01 }
+    expect:
+      status: 200
+      body:
+        - { path: $.pageNo, equals: 1 }
+        - { path: $.list, size: 10 }
+        - { path: '$.list[0].itemCd', equals: '10000014' }
+        - { path: '$.list[9].itemCd', equals: '20000080' }
+
+  - name: PF8 次頁 → 2頁目 5件
+    request:
+      path: /api/pm01
+      body: { aid: PF8 }
+    expect:
+      status: 200
+      body:
+        - { path: $.pageNo, equals: 2 }
+        - { path: $.list, size: 5 }
+        - { path: '$.list[0].itemCd', equals: '20000097' }
+        - { path: '$.list[4].itemCd', equals: '90000034' }
+
+  - name: 最終頁で PF8 → 頁は進まない
+    request:
+      path: /api/pm01
+      body: { aid: PF8 }
+    expect:
+      status: 200
+      body:
+        - { path: $.pageNo, equals: 2 }
+        - { path: '$.list[0].itemCd', equals: '20000097' }
+
+  - name: 他端末Bが表示中の頁より前に品目を登録（20000004）
+    terminal: B
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '20000004', itemName: 追加部品, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M005 }
+
+  - name: 端末Aの2頁目の先頭は CA01-TOP-ITEM-CD のまま（OFFSET ならずれる）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '20000103' }
+    expect:
+      status: 200
+      body:
+        - { path: $.pageNo, equals: 2 }
+        - { path: '$.list[0].itemCd', equals: '20000097' }
+        - { path: $.list, size: 5 }
+        - { path: $.fields.itemName, equals: 制御基板 }
+
+  - name: PF7 前頁 → 1頁目（追加分を含め先頭から10件）
+    request:
+      path: /api/pm01
+      body: { aid: PF7 }
+    expect:
+      status: 200
+      body:
+        - { path: $.pageNo, equals: 1 }
+        - { path: $.list, size: 10 }
+        - { path: '$.list[0].itemCd', equals: '10000014' }
+        - { path: '$.list[2].itemCd', equals: '20000004' }
+        - { path: '$.list[9].itemCd', equals: '20000073' }
+
+  - name: 先頭頁で PF7 → 頁は戻らない
+    request:
+      path: /api/pm01
+      body: { aid: PF7 }
+    expect:
+      status: 200
+      body:
+        - { path: $.pageNo, equals: 1 }
+        - { path: '$.list[0].itemCd', equals: '10000014' }
+
+  - name: PF8 → 2頁目の先頭は 20000080
+    request:
+      path: /api/pm01
+      body: { aid: PF8 }
+    expect:
+      status: 200
+      body:
+        - { path: $.pageNo, equals: 2 }
+        - { path: $.list, size: 6 }
+        - { path: '$.list[0].itemCd', equals: '20000080' }
+
+  - name: PF9（旧・一括出力）は受け付けない
+    request:
+      path: /api/pm01
+      body: { aid: PF9 }
+    expect:
+      status: 400

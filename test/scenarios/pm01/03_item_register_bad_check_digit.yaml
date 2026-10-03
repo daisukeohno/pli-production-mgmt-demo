@@ -1,0 +1,68 @@
+id: PM01-03
+title: 品目登録（チェックデジット不正→M001）
+screen: PM01
+status: active
+source: docs/design.md §4 PM01-3
+description: >
+  末尾チェックデジットが不正な品目コードは M001 となり登録されないこと。
+  30000019 は正しくは 30000018。30000010 は廃止済みの旧モジュラス11方式では正当だが現行方式では不正。
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm01 }
+    expect: { status: 200 }
+
+  - name: チェックデジット不正（30000019）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '30000019', itemName: 不正コード品, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M001 }
+        - { path: $.msgText, equals: 品目コードが不正です。チェックデジットを確認してください。 }
+        - { path: $.fieldPos, equals: F-ITEMCD }
+        - { path: $.fields.itemName, equals: 不正コード品 }
+
+  - name: 旧モジュラス11で正当なコード（30000010）も M001
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '30000010', itemName: 旧方式コード品, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M001 }
+        - { path: $.fieldPos, equals: F-ITEMCD }
+
+  - name: 数字以外（ABCDEFGH）も M001
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: ABCDEFGH, itemName: 英字コード品, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M001 }
+
+  - name: 7桁（桁不足）も M001
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '3000001', itemName: 桁不足品, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M001 }
+
+  - name: いずれも登録されていない
+    db:
+      sql: "SELECT ITEM_CD FROM SANSEKI.ITEM_MST WHERE ITEM_CD IN ('30000019', '30000010', 'ABCDEFGH', '3000001')"
+      expect:
+        - { path: $, size: 0 }
+
+  - name: 更新時もチェックデジット不正は M001
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '3', itemCd: '20000012', itemName: 主軸アセンブリ改, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M001 }
+        - { path: $.fieldPos, equals: F-ITEMCD }
