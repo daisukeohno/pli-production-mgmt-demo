@@ -1,0 +1,100 @@
+/*==================================================================*/
+/* PMUTL01  共通ユーティリティ                                        */
+/*          ・CALC-CHK-DGT  : 品目コード チェックデジット計算         */
+/*          ・VALID-CHK-DGT : 品目コード チェックデジット検証         */
+/*          ・GET-SYS-DATE  : システム日付取得（CICS ASKTIME経由）    */
+/*                                                                  */
+/* 変更履歴                                                          */
+/*   1998-04-20  初版作成                              SE 田中      */
+/*   2003-02-10  モジュラス10・ウェイト3-1方式に統一   SE 鈴木      */
+/*               （旧モジュラス11方式は廃止。下記コメント参照）      */
+/*   2010-06-25  GET-SYS-DATEをFORMATTIME対応に変更     SE 佐藤      */
+/*==================================================================*/
+PMUTL01: PROC(P-FUNC, P-ITEM-CD7, P-ITEM-CD8, P-CHK-DGT, P-VALID-FLG, P-SYS-DATE)
+          OPTIONS(MAIN REENTRANT);
+
+   DCL P-FUNC         CHAR(1);     /* 'C':計算のみ 'V':検証 'D':日付取得 */
+   DCL P-ITEM-CD7     CHAR(7);     /* 入力：品目コード先頭7桁 */
+   DCL P-ITEM-CD8     CHAR(8);     /* 入力：検証対象の品目コード8桁 */
+   DCL P-CHK-DGT      CHAR(1);     /* 出力：計算したチェックデジット */
+   DCL P-VALID-FLG    CHAR(1);     /* 出力：'Y'=正常 'N'=不正 */
+   DCL P-SYS-DATE     CHAR(10);    /* 出力：YYYY-MM-DD */
+
+   DCL 1 WK-DIGITS(7)  FIXED BIN(15);
+   DCL  WK-WEIGHT(7)   FIXED BIN(15) STATIC INIT(3,1,3,1,3,1,3);
+   DCL  WK-SUM         FIXED BIN(31);
+   DCL  WK-MOD         FIXED BIN(15);
+   DCL  WK-CHK         FIXED BIN(15);
+   DCL  I              FIXED BIN(15);
+
+   DCL  ABSTIME        FIXED BIN(31);
+   DCL  WK-DATE-CHAR   CHAR(10);
+
+   SELECT (P-FUNC);
+      WHEN ('C') DO;
+         CALL CALC_CHK_DGT(P-ITEM-CD7);
+      END;
+      WHEN ('V') DO;
+         CALL CALC_CHK_DGT(SUBSTR(P-ITEM-CD8,1,7));
+         IF P-CHK-DGT = SUBSTR(P-ITEM-CD8,8,1) THEN
+            P-VALID-FLG = 'Y';
+         ELSE
+            P-VALID-FLG = 'N';
+      END;
+      WHEN ('D') DO;
+         CALL GET_SYS_DATE;
+      END;
+      OTHERWISE
+         P-VALID-FLG = 'N';
+   END;
+
+   RETURN;
+
+   /*---------------------------------------------------------------*/
+   /* チェックデジット計算                                            */
+   /* モジュラス10、ウェイト3-1（7桁の各桁に左から3,1,3,1,3,1,3を乗算）*/
+   /* チェックデジット ＝ (10 - (合計 MOD 10)) MOD 10                 */
+   /*---------------------------------------------------------------*/
+   CALC_CHK_DGT: PROC(P-CD7);
+      DCL P-CD7 CHAR(7);
+
+      DO I = 1 TO 7;
+         WK-DIGITS(I) = SUBSTR(P-CD7, I, 1);
+      END;
+
+      WK-SUM = 0;
+      DO I = 1 TO 7;
+         WK-SUM = WK-SUM + (WK-DIGITS(I) * WK-WEIGHT(I));
+      END;
+
+      WK-MOD = MOD(WK-SUM, 10);
+      WK-CHK = MOD(10 - WK-MOD, 10);
+
+      P-CHK-DGT = CHAR(WK-CHK, 1);
+
+      /* 旧モジュラス11方式（2003-02-10廃止。参考のため残置）         */
+      /* WK-SUM = 0;                                                 */
+      /* DO I = 1 TO 7;                                              */
+      /*    WK-SUM = WK-SUM + (WK-DIGITS(I) * (8 - I));              */
+      /* END;                                                        */
+      /* WK-CHK = MOD(11 - MOD(WK-SUM,11), 11);                      */
+
+   END CALC_CHK_DGT;
+
+   /*---------------------------------------------------------------*/
+   /* システム日付取得                                                */
+   /* CICS ASKTIMEでABSTIMEを取得しFORMATTIMEでYYYY-MM-DDへ変換する   */
+   /*---------------------------------------------------------------*/
+   GET_SYS_DATE: PROC;
+      EXEC CICS ASKTIME
+         ABSTIME(ABSTIME);
+
+      EXEC CICS FORMATTIME
+         ABTIME(ABSTIME)
+         YYYYMMDD(WK-DATE-CHAR)
+         DATESEP('-');
+
+      P-SYS-DATE = WK-DATE-CHAR;
+   END GET_SYS_DATE;
+
+END PMUTL01;
