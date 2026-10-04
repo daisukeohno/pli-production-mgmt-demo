@@ -42,7 +42,7 @@ docs/
 
 ## 移行版（Spring Boot + React）
 
-パイロットとして PM01 品目マスタ保守と 3 画面共通基盤を移行しています。
+パイロットの PM01 品目マスタ保守と 3 画面共通基盤に続き、PM02 在庫照会・入出庫登録を移行しています。
 
 ```
 backend/   Spring Boot 3 / Java 17（H2 DB2 モード。起動時に db2/ddl と db2/data を投入）
