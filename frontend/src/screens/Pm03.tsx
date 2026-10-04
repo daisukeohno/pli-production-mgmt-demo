@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { transact, type Aid, type ScreenMessage } from '../api/client';
+import { EndedPanel } from '../components/EndedPanel';
+import { FormGrid, FormRow, TextInput, focusField } from '../components/Fields';
+import { ListTable } from '../components/ListTable';
 import { ScreenFrame, type PfKey } from '../components/ScreenFrame';
 
 interface Fields {
@@ -30,10 +33,10 @@ const NG_LIST_SIZE = 10;
 const EMPTY: Fields = { itemCd: '', itemName: '', orderQty: '', dueDate: '', orderNo: '' };
 
 const PF_KEYS: PfKey[] = [
-  { aid: 'ENTER', label: 'Enter:登録' },
-  { aid: 'PF4', label: 'PF4:不足一覧' },
-  { aid: 'PF3', label: 'PF3:終了' },
-  { aid: 'CLEAR', label: 'CLEAR(Esc):取消' },
+  { aid: 'ENTER', label: '登録' },
+  { aid: 'PF4', label: '不足一覧' },
+  { aid: 'PF3', label: '終了' },
+  { aid: 'CLEAR', label: '取消' },
 ];
 
 /** PM03 製造指示登録 */
@@ -89,28 +92,16 @@ export function Pm03() {
     if (!screen || screen.ended) return;
     const pos = (screen.fieldPos ?? 'F-ITEMCD') as FieldPos;
     const el = refs.current[pos] ?? refs.current['F-ITEMCD'];
-    el?.focus();
-    el?.select();
+    focusField(el);
   }, [screen]);
 
   if (screen?.ended) {
-    return (
-      <div className="terminal ended">
-        <p>PM03 製造指示登録を終了しました。</p>
-        <button type="button" onClick={() => void start()} autoFocus>
-          再開
-        </button>
-      </div>
-    );
+    return <EndedPanel message="PM03 製造指示登録を終了しました。" onRestart={() => void start()} />;
   }
 
   const set = (k: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setFields({ ...fields, [k]: e.target.value });
-  const errorAt = (pos: FieldPos) => (screen?.msgId && screen.fieldPos === pos ? 'error' : '');
-
-  // F-NGLIST01〜10 は PF4 で送信された不足部品一覧。未表示時は空行
-  const ngRows: (NgRow | null)[] = [...(screen?.ngList ?? [])];
-  while (ngRows.length < NG_LIST_SIZE) ngRows.push(null);
+  const errorAt = (pos: FieldPos) => !!screen?.msgId && screen.fieldPos === pos;
 
   return (
     <ScreenFrame
@@ -121,71 +112,71 @@ export function Pm03() {
       pfKeys={PF_KEYS}
       onAid={(aid) => void onAid(aid)}
     >
-      <div className="row">
-        <label htmlFor="F-ITEMCD">製品コード</label>
-        <input
-          id="F-ITEMCD"
-          ref={(el) => (refs.current['F-ITEMCD'] = el)}
-          className={`fld w8 ${errorAt('F-ITEMCD')}`}
-          maxLength={8}
-          value={fields.itemCd}
-          onChange={set('itemCd')}
-        />
-        <span className="hint">{fields.itemName}</span>
-      </div>
-      <div className="row">
-        <label htmlFor="F-ORDERQTY">指示数量</label>
-        <input
-          id="F-ORDERQTY"
-          ref={(el) => (refs.current['F-ORDERQTY'] = el)}
-          className={`fld ${errorAt('F-ORDERQTY')}`}
-          style={{ width: '10ch' }}
-          maxLength={9}
-          inputMode="numeric"
-          value={fields.orderQty}
-          onChange={set('orderQty')}
-        />
-      </div>
-      <div className="row">
-        <label htmlFor="F-DUEDATE">完成予定日</label>
-        <input
-          id="F-DUEDATE"
-          ref={(el) => (refs.current['F-DUEDATE'] = el)}
-          className={`fld ${errorAt('F-DUEDATE')}`}
-          style={{ width: '12ch' }}
-          maxLength={10}
-          placeholder="YYYY-MM-DD"
-          value={fields.dueDate}
-          onChange={set('dueDate')}
-        />
-      </div>
-      <div className="row">
-        <label htmlFor="F-ORDERNO">製造指示番号</label>
-        <input
-          id="F-ORDERNO"
-          className="fld"
-          style={{ width: '8ch' }}
-          readOnly
-          tabIndex={-1}
-          value={fields.orderNo}
-        />
-      </div>
+      <FormGrid>
+        <FormRow label="製品コード" htmlFor="F-ITEMCD" hint={fields.itemName}>
+          <TextInput
+            id="F-ITEMCD"
+            ref={(el) => (refs.current['F-ITEMCD'] = el)}
+            className="w-36 tabular-nums"
+            invalid={errorAt('F-ITEMCD')}
+            maxLength={8}
+            value={fields.itemCd}
+            onChange={set('itemCd')}
+          />
+        </FormRow>
+        <FormRow label="指示数量" htmlFor="F-ORDERQTY">
+          <TextInput
+            id="F-ORDERQTY"
+            ref={(el) => (refs.current['F-ORDERQTY'] = el)}
+            className="w-36 text-right tabular-nums"
+            invalid={errorAt('F-ORDERQTY')}
+            maxLength={9}
+            inputMode="numeric"
+            value={fields.orderQty}
+            onChange={set('orderQty')}
+          />
+        </FormRow>
+        <FormRow label="完成予定日" htmlFor="F-DUEDATE">
+          <TextInput
+            id="F-DUEDATE"
+            ref={(el) => (refs.current['F-DUEDATE'] = el)}
+            className="w-40 tabular-nums"
+            invalid={errorAt('F-DUEDATE')}
+            maxLength={10}
+            placeholder="YYYY-MM-DD"
+            value={fields.dueDate}
+            onChange={set('dueDate')}
+          />
+        </FormRow>
+        <FormRow label="製造指示番号" htmlFor="F-ORDERNO">
+          <TextInput
+            id="F-ORDERNO"
+            className="w-36 tabular-nums"
+            readOnly
+            tabIndex={-1}
+            value={fields.orderNo}
+          />
+        </FormRow>
+      </FormGrid>
 
-      <div className="row list-head">
-        <span className="c-cd">部品コード</span>
-        <span className="c-nm">不足一覧（PF4）</span>
-      </div>
-      <ol className="list" data-testid="ng-list">
-        {ngRows.map((r, i) => (
-          <li key={i} className="row" data-testid={`F-NGLIST${String(i + 1).padStart(2, '0')}`}>
-            {r && (
-              <span>
-                {r.itemCd} 必要 {r.needQty} 在庫 {r.stockQty}
-              </span>
-            )}
-          </li>
-        ))}
-      </ol>
+      {/* F-NGLIST01〜10 は PF4 で送信された不足部品一覧。未表示時は空行 */}
+      <ListTable<NgRow>
+        title="不足部品一覧（F4）"
+        columns={[
+          { header: '部品コード', className: 'tabular-nums', render: (r) => r.itemCd },
+          { header: '必要数量', align: 'right', className: 'w-40', render: (r) => r.needQty },
+          {
+            header: '在庫数量',
+            align: 'right',
+            className: 'w-40',
+            render: (r) => <span className="font-semibold text-red-600">{r.stockQty}</span>,
+          },
+        ]}
+        rows={screen?.ngList ?? []}
+        size={NG_LIST_SIZE}
+        testId="ng-list"
+        rowTestIdPrefix="F-NGLIST"
+      />
     </ScreenFrame>
   );
 }

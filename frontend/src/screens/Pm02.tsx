@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { transact, type Aid, type ScreenMessage } from '../api/client';
+import { EndedPanel } from '../components/EndedPanel';
+import { FormGrid, FormRow, SelectInput, TextInput, focusField, withCurrent, type Option } from '../components/Fields';
 import { ScreenFrame, type PfKey } from '../components/ScreenFrame';
 
 interface Fields {
@@ -21,13 +23,15 @@ type InputPos = 'F-ITEMCD' | 'F-IOKBN' | 'F-IOQTY';
 
 const EMPTY: Fields = { itemCd: '', itemName: '', stockQty: null, ioKbn: '', ioQty: '' };
 
-/** 9 桁の数量項目（styles.css は共通のため画面側で幅を指定） */
-const QTY_STYLE = { width: '10ch', textAlign: 'right' } as const;
+const IOKBN_OPTIONS: Option[] = [
+  { value: '1', label: '1:入庫' },
+  { value: '2', label: '2:出庫' },
+];
 
 const PF_KEYS: PfKey[] = [
-  { aid: 'ENTER', label: 'Enter:実行' },
-  { aid: 'PF3', label: 'PF3:終了' },
-  { aid: 'CLEAR', label: 'CLEAR(Esc):取消' },
+  { aid: 'ENTER', label: '実行' },
+  { aid: 'PF3', label: '終了' },
+  { aid: 'CLEAR', label: '取消' },
 ];
 
 /** PM02 在庫照会・入出庫登録 */
@@ -36,7 +40,7 @@ export function Pm02() {
   const [fields, setFields] = useState<Fields>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [commError, setCommError] = useState<string | null>(null);
-  const refs = useRef<Partial<Record<InputPos, HTMLInputElement | null>>>({});
+  const refs = useRef<Partial<Record<InputPos, HTMLElement | null>>>({});
 
   const apply = (res: Pm02Response) => {
     setScreen(res);
@@ -77,25 +81,17 @@ export function Pm02() {
     if (!screen || screen.ended) return;
     const pos = (screen.fieldPos ?? 'F-ITEMCD') as InputPos;
     const el = refs.current[pos] ?? refs.current['F-ITEMCD'];
-    el?.focus();
-    el?.select();
+    focusField(el);
   }, [screen]);
 
   if (screen?.ended) {
-    return (
-      <div className="terminal ended">
-        <p>PM02 在庫照会・入出庫登録を終了しました。</p>
-        <button type="button" onClick={() => void start()} autoFocus>
-          再開
-        </button>
-      </div>
-    );
+    return <EndedPanel message="PM02 在庫照会・入出庫登録を終了しました。" onRestart={() => void start()} />;
   }
 
-  const set = (k: 'itemCd' | 'ioKbn' | 'ioQty') => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: 'itemCd' | 'ioKbn' | 'ioQty') => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFields({ ...fields, [k]: e.target.value });
-  // 業務エラー（msgId あり）の項目のみ反転表示。照会後のカーソル位置指定（msgId なし）は対象外
-  const errorAt = (pos: InputPos) => (screen?.msgId && screen.fieldPos === pos ? 'error' : '');
+  // 業務エラー（msgId あり）の項目のみ赤枠表示。照会後のカーソル位置指定（msgId なし）は対象外
+  const errorAt = (pos: InputPos) => !!screen?.msgId && screen.fieldPos === pos;
 
   return (
     <ScreenFrame
@@ -106,56 +102,62 @@ export function Pm02() {
       pfKeys={PF_KEYS}
       onAid={(aid) => void onAid(aid)}
     >
-      <div className="row">
-        <label htmlFor="F-ITEMCD">品目コード</label>
-        <input
-          id="F-ITEMCD"
-          ref={(el) => (refs.current['F-ITEMCD'] = el)}
-          className={`fld w8 ${errorAt('F-ITEMCD')}`}
-          maxLength={8}
-          value={fields.itemCd}
-          onChange={set('itemCd')}
-        />
-      </div>
-      <div className="row">
-        <label htmlFor="F-ITEMNM">品目名</label>
-        <input id="F-ITEMNM" className="fld w20" readOnly tabIndex={-1} value={fields.itemName} />
-      </div>
-      <div className="row">
-        <label htmlFor="F-STOCKQTY">現在庫数量</label>
-        <input
-          id="F-STOCKQTY"
-          className="fld"
-          style={QTY_STYLE}
-          readOnly
-          tabIndex={-1}
-          value={fields.stockQty == null ? '' : String(fields.stockQty)}
-        />
-      </div>
-      <div className="row">
-        <label htmlFor="F-IOKBN">入出庫区分</label>
-        <input
-          id="F-IOKBN"
-          ref={(el) => (refs.current['F-IOKBN'] = el)}
-          className={`fld w1 ${errorAt('F-IOKBN')}`}
-          maxLength={1}
-          value={fields.ioKbn}
-          onChange={set('ioKbn')}
-        />
-        <span className="hint">1:入庫 2:出庫</span>
-      </div>
-      <div className="row">
-        <label htmlFor="F-IOQTY">入出庫数量</label>
-        <input
-          id="F-IOQTY"
-          ref={(el) => (refs.current['F-IOQTY'] = el)}
-          className={`fld ${errorAt('F-IOQTY')}`}
-          style={QTY_STYLE}
-          maxLength={9}
-          value={fields.ioQty}
-          onChange={set('ioQty')}
-        />
-      </div>
+      <FormGrid>
+        <FormRow label="品目コード" htmlFor="F-ITEMCD">
+          <TextInput
+            id="F-ITEMCD"
+            ref={(el) => (refs.current['F-ITEMCD'] = el)}
+            className="w-36 tabular-nums"
+            invalid={errorAt('F-ITEMCD')}
+            maxLength={8}
+            value={fields.itemCd}
+            onChange={set('itemCd')}
+          />
+        </FormRow>
+        <FormRow label="品目名" htmlFor="F-ITEMNM">
+          <TextInput id="F-ITEMNM" className="w-full max-w-md" readOnly tabIndex={-1} value={fields.itemName} />
+        </FormRow>
+        <FormRow label="現在庫数量" htmlFor="F-STOCKQTY">
+          <TextInput
+            id="F-STOCKQTY"
+            className="w-36 text-right tabular-nums"
+            readOnly
+            tabIndex={-1}
+            value={fields.stockQty == null ? '' : String(fields.stockQty)}
+          />
+        </FormRow>
+      </FormGrid>
+
+      <FormGrid>
+        <FormRow label="入出庫区分" htmlFor="F-IOKBN">
+          <SelectInput
+            id="F-IOKBN"
+            ref={(el) => (refs.current['F-IOKBN'] = el)}
+            className="w-40"
+            invalid={errorAt('F-IOKBN')}
+            value={fields.ioKbn}
+            onChange={set('ioKbn')}
+          >
+            <option value="">未選択</option>
+            {withCurrent(IOKBN_OPTIONS, fields.ioKbn).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </SelectInput>
+        </FormRow>
+        <FormRow label="入出庫数量" htmlFor="F-IOQTY">
+          <TextInput
+            id="F-IOQTY"
+            ref={(el) => (refs.current['F-IOQTY'] = el)}
+            className="w-36 text-right tabular-nums"
+            invalid={errorAt('F-IOQTY')}
+            maxLength={9}
+            value={fields.ioQty}
+            onChange={set('ioQty')}
+          />
+        </FormRow>
+      </FormGrid>
     </ScreenFrame>
   );
 }
