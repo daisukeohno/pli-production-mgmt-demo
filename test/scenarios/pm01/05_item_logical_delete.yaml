@@ -1,0 +1,104 @@
+id: PM01-05
+title: 品目削除（論理削除後、一覧に出ないことを確認）
+screen: PM01
+status: active
+source: docs/design.md §4 PM01-5 / §2 ルール2
+description: >
+  機能コード4の削除は DEL_FLG='1' の論理削除（行は残る）。削除後は一覧・照会の対象外になる。
+steps:
+  - name: 初回起動（20000028 が一覧にある）
+    request: { method: GET, path: /api/pm01 }
+    expect:
+      status: 200
+      body:
+        - { path: '$.list[*].itemCd', contains: '20000028' }
+        - { path: '$.list[9].itemCd', equals: '20000080' }
+
+  - name: 照会（UPD_TMS 退避）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '20000028' }
+    expect:
+      status: 200
+      body:
+        - { path: $.fields.itemName, equals: ハウジングケース }
+
+  - name: 機能4 削除 → M007
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '4', itemCd: '20000028' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M007 }
+        - { path: $.msgText, equals: 削除しました。 }
+        - { path: '$.list[*].itemCd', notContains: '20000028' }
+        - { path: $.list, size: 10 }
+        - { path: '$.list[9].itemCd', equals: '20000097' }
+
+  - name: 物理削除ではなく DEL_FLG='1'
+    db:
+      sql: "SELECT DEL_FLG FROM SANSEKI.ITEM_MST WHERE ITEM_CD = '20000028'"
+      expect:
+        - { path: $, size: 1 }
+        - { path: '$[0].DEL_FLG', equals: '1' }
+
+  - name: 削除済品目の照会は M002
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '20000028' }
+    expect:
+      status: 404
+      body:
+        - { path: $.msgId, equals: M002 }
+
+  - name: 新しい端末で起動しても一覧に出ない
+    terminal: B
+    request: { method: GET, path: /api/pm01 }
+    expect:
+      status: 200
+      body:
+        - { path: '$.list[*].itemCd', notContains: '20000028' }
+
+  - name: 次頁にも出ない
+    terminal: B
+    request:
+      path: /api/pm01
+      body: { aid: PF8 }
+    expect:
+      status: 200
+      body:
+        - { path: '$.list[*].itemCd', notContains: '20000028' }
+        - { path: $.list, size: 4 }
+
+  - name: 削除済コードでの再登録は M003（キーは使用済）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '20000028', itemName: ハウジングケース, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 409
+      body:
+        - { path: $.msgId, equals: M003 }
+
+  - name: 削除の照会→実行の2段階（未照会の品目に機能4を指定すると表示のみ）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '4', itemCd: '90000034' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, isNull: true }
+        - { path: $.fields.itemName, equals: 作業用手袋 }
+  - name: 未削除のまま
+    db:
+      sql: "SELECT DEL_FLG FROM SANSEKI.ITEM_MST WHERE ITEM_CD = '90000034'"
+      expect:
+        - { path: '$[0].DEL_FLG', equals: '0' }
+  - name: 再度 ENTER で削除実行
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '4', itemCd: '90000034' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M007 }

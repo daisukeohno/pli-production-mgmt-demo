@@ -40,4 +40,24 @@ docs/
 - 更新・削除時に「他の端末で更新されています」と表示される場合がありますが、仕様です
 （楽観的排他制御）。
 
+## 移行版（Spring Boot + React）
+
+パイロットとして PM01 品目マスタ保守と 3 画面共通基盤を移行しています。
+
+```
+backend/   Spring Boot 3 / Java 17（H2 DB2 モード。起動時に db2/ddl と db2/data を投入）
+frontend/  React + Vite + TypeScript（/api を backend:8080 へプロキシ）
+test/scenarios/  design.md §4 のシナリオ定義（YAML）。PM01 は active、PM02/PM03 は pending
+```
+
+```
+cd backend && mvn spring-boot:run      # http://localhost:8080/api/pm01
+cd frontend && npm install && npm run dev   # http://localhost:5173
+cd backend && mvn test                 # 単体テスト＋シナリオ（実 HTTP）
+```
+
+- COMMAREA（PMCOMM）は HTTP セッションに保持（1 セッション＝1 端末）。CA01-LOCK-FLG は移植していません。
+- エラーは `{msgId, msgText, fieldPos}`。fieldPos は BMS 項目名（例 `F-ITEMCD`）。
+- PFキー: Enter / PF3 / PF7 / PF8 / CLEAR(Esc)。PF9（旧一括出力）はありません。
+
 以上

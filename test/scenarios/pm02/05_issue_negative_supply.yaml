@@ -1,0 +1,24 @@
+id: PM02-05
+title: 出庫登録（消耗品区分でマイナス在庫許容を確認）
+screen: PM02
+status: pending
+source: docs/design.md §4 PM02-5 / §2 ルール5
+description: 品目区分 '9'（消耗品）のみマイナス在庫を許容する。
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm02 }
+    expect: { status: 200 }
+  - name: 出庫 90000027 から 20（在庫 15）
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '90000027', ioKbn: '2', ioQty: '20' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M012 }
+        - { path: $.fields.stockQty, equals: -5 }
+  - name: DB 在庫 -5
+    db:
+      sql: "SELECT STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '90000027'"
+      expect:
+        - { path: '$[0].STOCK_QTY', equals: -5 }

@@ -1,0 +1,42 @@
+id: PM02-02
+title: 入庫登録
+screen: PM02
+status: pending
+source: docs/design.md §4 PM02-2
+description: 入出庫区分1（入庫）で在庫数量が加算され M012。
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm02 }
+    expect: { status: 200 }
+  - name: 入庫 20000028 に 20
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '20000028', ioKbn: '1', ioQty: '20' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M012 }
+        - { path: $.fields.stockQty, equals: 100 }
+  - name: DB 在庫 80 → 100
+    db:
+      sql: "SELECT STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000028'"
+      expect:
+        - { path: '$[0].STOCK_QTY', equals: 100 }
+  - name: 入出庫区分不正は M010
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '20000028', ioKbn: '3', ioQty: '1' }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M010 }
+        - { path: $.fieldPos, equals: F-IOKBN }
+  - name: 数量に数字以外は M008
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '20000028', ioKbn: '1', ioQty: 'ABC' }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M008 }
+        - { path: $.fieldPos, equals: F-IOQTY }

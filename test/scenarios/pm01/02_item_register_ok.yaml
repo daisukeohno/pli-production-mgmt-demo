@@ -1,0 +1,92 @@
+id: PM01-02
+title: 品目登録（チェックデジット正常）
+screen: PM01
+status: active
+source: docs/design.md §4 PM01-2
+description: >
+  モジュラス10・ウェイト3-1で正しいチェックデジットを持つ品目コードを登録できること。
+  3000001 → 3*3+1*3=12 → (10-2) mod 10 = 8 → 30000018。
+  品目名は CHAR(20)（20桁まで可、21桁以上は不可。旧仕様の24桁は採用しない）。
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm01 }
+    expect: { status: 200 }
+
+  - name: 機能2 登録（30000018）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '30000018', itemName: テスト用ブラケット, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M005 }
+        - { path: $.msgText, equals: 登録しました。 }
+        - { path: $.fieldPos, isNull: true }
+
+  - name: DB に DEL_FLG='0' で登録され、CHAR(20) は空白パディング
+    db:
+      sql: "SELECT ITEM_NAME, ITEM_KBN, STOCK_UNIT, DEL_FLG, LENGTH(ITEM_NAME) AS NM_LEN FROM SANSEKI.ITEM_MST WHERE ITEM_CD = '30000018'"
+      expect:
+        - { path: $, size: 1 }
+        - { path: '$[0].ITEM_NAME', matches: 'テスト用ブラケット\s*' }
+        - { path: '$[0].DEL_FLG', equals: '0' }
+        - { path: '$[0].ITEM_KBN', equals: '2' }
+
+  - name: 登録した品目を照会できる
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '30000018' }
+    expect:
+      status: 200
+      body:
+        - { path: $.fields.itemName, equals: テスト用ブラケット }
+        - { path: $.fields.stockUnit, equals: 個 }
+
+  - name: 品目名 20 桁ちょうどは登録可（30000025）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '30000025', itemName: 一二三四五六七八九十一二三四五六七八九十, itemKbn: '9', stockUnit: KG }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M005 }
+
+  - name: 品目名 24 桁（旧仕様）は不可
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '30000032', itemName: 一二三四五六七八九十一二三四五六七八九十一二三四, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M004 }
+        - { path: $.fieldPos, equals: F-ITEMNM }
+
+  - name: 既存コードは M003
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '20000011', itemName: 重複, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 409
+      body:
+        - { path: $.msgId, equals: M003 }
+        - { path: $.fieldPos, equals: F-ITEMCD }
+
+  - name: 品目区分が 1/2/9 以外は不可
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '30000032', itemName: 区分不正, itemKbn: '3', stockUnit: 個 }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M004 }
+        - { path: $.fieldPos, equals: F-KBN }
+
+  - name: 単位未入力は M004（F-UNIT）
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '2', itemCd: '30000032', itemName: 単位なし, itemKbn: '2', stockUnit: '' }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M004 }
+        - { path: $.fieldPos, equals: F-UNIT }

@@ -1,0 +1,100 @@
+id: PM01-04
+title: 品目更新（楽観排他：他端末更新想定でM017再現）
+screen: PM01
+status: active
+source: docs/design.md §4 PM01-4 / §2 ルール3
+description: >
+  端末A・Bが同じ品目を照会（UPD_TMS を CA01-UPD-TMS へ退避）。B が先に更新すると UPD_TMS が変わり、
+  A の更新は直前の再比較で不一致となり M017。A が再照会すれば更新できる。
+steps:
+  - name: 端末A 起動
+    terminal: A
+    request: { method: GET, path: /api/pm01 }
+    expect: { status: 200 }
+  - name: 端末B 起動
+    terminal: B
+    request: { method: GET, path: /api/pm01 }
+    expect: { status: 200 }
+
+  - name: 端末A 照会（20000073）
+    terminal: A
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '20000073' }
+    expect:
+      status: 200
+      body:
+        - { path: $.fields.itemName, equals: オイルシール }
+  - name: 端末B 照会（20000073）
+    terminal: B
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '20000073' }
+    expect: { status: 200 }
+
+  - name: 端末B 更新 → M006
+    terminal: B
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '3', itemCd: '20000073', itemName: オイルシールB, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M006 }
+        - { path: $.msgText, equals: 更新しました。 }
+
+  - name: 端末A 更新 → UPD_TMS 不一致で M017
+    terminal: A
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '3', itemCd: '20000073', itemName: オイルシールA, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 409
+      body:
+        - { path: $.msgId, equals: M017 }
+        - { path: $.msgText, equals: 他の端末で更新されています。再照会してください。 }
+        - { path: $.fieldPos, equals: F-FUNC }
+        - { path: $.fields.itemName, equals: オイルシールA }
+
+  - name: DB は端末B の更新内容のまま
+    db:
+      sql: "SELECT ITEM_NAME, UPD_TMS FROM SANSEKI.ITEM_MST WHERE ITEM_CD = '20000073'"
+      expect:
+        - { path: '$[0].ITEM_NAME', matches: 'オイルシールB\s*' }
+
+  - name: 端末A 再照会で最新内容が表示される
+    terminal: A
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '1', itemCd: '20000073' }
+    expect:
+      status: 200
+      body:
+        - { path: $.fields.itemName, equals: オイルシールB }
+
+  - name: 端末A 再照会後の更新は成功
+    terminal: A
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '3', itemCd: '20000073', itemName: オイルシールA, itemKbn: '2', stockUnit: 個 }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M006 }
+
+  - name: 端末B は古い UPD_TMS のままなので削除も M017
+    terminal: B
+    request:
+      path: /api/pm01
+      body: { aid: ENTER, func: '4', itemCd: '20000073' }
+    expect:
+      status: 409
+      body:
+        - { path: $.msgId, equals: M017 }
+
+  - name: 削除されていない
+    db:
+      sql: "SELECT ITEM_NAME, DEL_FLG FROM SANSEKI.ITEM_MST WHERE ITEM_CD = '20000073'"
+      expect:
+        - { path: '$[0].ITEM_NAME', matches: 'オイルシールA\s*' }
+        - { path: '$[0].DEL_FLG', equals: '0' }

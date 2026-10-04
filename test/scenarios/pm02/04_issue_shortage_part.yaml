@@ -1,0 +1,24 @@
+id: PM02-04
+title: 出庫登録（部品区分で在庫不足→M011）
+screen: PM02
+status: pending
+source: docs/design.md §4 PM02-4 / §2 ルール5
+description: 品目区分 '2'（部品）は在庫不足の出庫を受け付けない（M011）。
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm02 }
+    expect: { status: 200 }
+  - name: 出庫 20000103 から 30（在庫 25）
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '20000103', ioKbn: '2', ioQty: '30' }
+    expect:
+      status: 422
+      body:
+        - { path: $.msgId, equals: M011 }
+        - { path: $.fieldPos, equals: F-IOQTY }
+  - name: 在庫は変わらない
+    db:
+      sql: "SELECT STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000103'"
+      expect:
+        - { path: '$[0].STOCK_QTY', equals: 25 }

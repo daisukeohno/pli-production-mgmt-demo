@@ -1,0 +1,36 @@
+id: PM03-02
+title: 製造指示登録（部品在庫不足→一覧表示M015）
+screen: PM03
+status: pending
+source: docs/design.md §4 PM03-2 / §2 ルール6
+description: >
+  10000021 を 50 台指示。20000042 は CEIL(50×2÷0.93)=108 必要だが在庫 40 → 不足。
+  不足部品は CA03-NG-LIST に格納し M015、PF4 で F-NGLIST01〜10 に表示。
+steps:
+  - name: 初回起動
+    request: { method: GET, path: /api/pm03 }
+    expect: { status: 200 }
+  - name: 登録 → M015
+    request:
+      path: /api/pm03
+      body: { aid: ENTER, itemCd: '10000021', orderQty: '50', dueDate: '2026-12-01' }
+    expect:
+      status: 422
+      body:
+        - { path: $.msgId, equals: M015 }
+  - name: PF4 で不足一覧
+    request:
+      path: /api/pm03
+      body: { aid: PF4 }
+    expect:
+      status: 200
+      body:
+        - { path: $.ngList, size: 1 }
+        - { path: '$.ngList[0].itemCd', equals: '20000042' }
+        - { path: '$.ngList[0].needQty', equals: 108 }
+        - { path: '$.ngList[0].stockQty', equals: 40 }
+  - name: 製造指示は発行されない
+    db:
+      sql: "SELECT COUNT(*) AS CNT FROM SANSEKI.WORK_ORDER"
+      expect:
+        - { path: '$[0].CNT', equals: 2 }
