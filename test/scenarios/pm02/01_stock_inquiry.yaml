@@ -1,7 +1,7 @@
 id: PM02-01
 title: 在庫照会（正常系）
 screen: PM02
-status: pending
+status: active
 source: docs/design.md §4 PM02-1
 description: 品目コードを入力すると品目名と現在庫数量が表示される。
 steps:
@@ -17,6 +17,17 @@ steps:
       body:
         - { path: $.fields.itemName, equals: 主軸アセンブリ }
         - { path: $.fields.stockQty, equals: 120 }
+        - { path: $.msgId, isNull: true }
+        - { path: $.fieldPos, equals: F-IOKBN }
+  - name: 照会（消耗品 90000027）
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '90000027' }
+    expect:
+      status: 200
+      body:
+        - { path: $.fields.itemName, equals: 洗浄スプレー }
+        - { path: $.fields.stockQty, equals: 15 }
   - name: 存在しない品目は M002
     request:
       path: /api/pm02
@@ -26,3 +37,19 @@ steps:
       body:
         - { path: $.msgId, equals: M002 }
         - { path: $.fieldPos, equals: F-ITEMCD }
+        - { path: $.fields.itemName, equals: '' }
+        - { path: $.fields.stockQty, isNull: true }
+  - name: 品目コード未入力は M004
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '' }
+    expect:
+      status: 400
+      body:
+        - { path: $.msgId, equals: M004 }
+        - { path: $.fieldPos, equals: F-ITEMCD }
+  - name: 照会のみでは在庫は変わらない
+    db:
+      sql: "SELECT CAST(STOCK_QTY AS INTEGER) AS STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000011'"
+      expect:
+        - { path: '$[0].STOCK_QTY', equals: 120 }

@@ -1,7 +1,7 @@
 id: PM02-05
 title: 出庫登録（消耗品区分でマイナス在庫許容を確認）
 screen: PM02
-status: pending
+status: active
 source: docs/design.md §4 PM02-5 / §2 ルール5
 description: 品目区分 '9'（消耗品）のみマイナス在庫を許容する。
 steps:
@@ -19,6 +19,6 @@ steps:
         - { path: $.fields.stockQty, equals: -5 }
   - name: DB 在庫 -5
     db:
-      sql: "SELECT STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '90000027'"
+      sql: "SELECT CAST(STOCK_QTY AS INTEGER) AS STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '90000027'"
       expect:
         - { path: '$[0].STOCK_QTY', equals: -5 }
