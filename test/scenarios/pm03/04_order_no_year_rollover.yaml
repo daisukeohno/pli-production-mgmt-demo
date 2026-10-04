@@ -1,14 +1,12 @@
 id: PM03-04
 title: 製造指示番号の年度またぎ採番確認
 screen: PM03
-status: pending
 source: docs/design.md §4 PM03-4 / §2 ルール7
 description: >
-  製造指示番号 = 'W' + 西暦下2桁 + 4桁連番。SEQ_CTL.SEQ_YY と現在年が異なる場合は連番を 0001 から振り直す想定。
-  ※ design.md は「西暦下2桁」、DDL コメントは「年度下2桁」で表記揺れあり。PM03 実装時に確定させること。
-  ※ SEQ_CTL 採番は PM03 スコープのため、今回（PM01 パイロット）では未実装。
+  製造指示番号 = 'W' + 西暦下2桁 + 4桁連番。SEQ_CTL.SEQ_YY と現在年が異なる場合は連番を 0001 から振り直す。
+  ※ design.md は「西暦下2桁」、DDL コメントは「年度下2桁」で表記揺れあり。PM03 では「西暦下2桁」を採用（実質同一）。
 preconditions:
-  - システム時計を 2027-01-04（JST）に固定できること（PM03 実装時に Clock 差し替えをランナーへ追加）
+  fixedClock: '2027-01-04'   # システム時計を 2027-01-04（JST）に固定
 steps:
   - name: 初回起動
     request: { method: GET, path: /api/pm03 }

@@ -12,6 +12,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,8 +28,12 @@ import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,6 +63,9 @@ class ScenarioTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    TestClock testClock;
+
     @TestFactory
     Stream<DynamicNode> scenarios() throws IOException {
         Path root = Path.of(System.getProperty("scenarios.dir", "../test/scenarios")).toAbsolutePath().normalize();
@@ -80,6 +91,15 @@ class ScenarioTest {
     private void run(Scenario sc) throws Exception {
         Assumptions.assumeFalse("pending".equals(sc.status), sc.id + " は未実装画面のため保留（pending）");
         db.reset();
+        testClock.clear();
+        if (sc.preconditions != null) {
+            for (String sql : sc.preconditions.sql) {
+                jdbc.update(sql);
+            }
+            if (sc.preconditions.fixedClock != null) {
+                testClock.fix(LocalDate.parse(sc.preconditions.fixedClock));
+            }
+        }
         Map<String, HttpClient> terminals = new HashMap<>();
         int no = 0;
         for (Step step : sc.steps) {
@@ -181,8 +201,14 @@ class ScenarioTest {
         public String status = "active";
         public String source;
         public String description;
-        public List<String> preconditions = List.of();
+        public Preconditions preconditions = new Preconditions();
         public List<Step> steps = List.of();
+    }
+
+    /** シナリオ開始前の前処理。sql は DB 初期化直後に実行し、fixedClock はそのシナリオ中のシステム日付（JST）を固定する。 */
+    public static class Preconditions {
+        public List<String> sql = List.of();
+        public String fixedClock;
     }
 
     public static class Step {
@@ -217,5 +243,52 @@ class ScenarioTest {
         public Object notContains;
         public String matches;
         public Boolean isNull;
+    }
+
+    /**
+     * シナリオの時計固定用。ClockConfig が作るシステム Clock を @Primary で差し替え、
+     * preconditions.fixedClock の指定時だけ固定時刻を返す。未指定時はシステム時計へ委譲する。
+     */
+    static class TestClock extends Clock {
+        private final ZoneId zone;
+        private Instant fixed;
+
+        TestClock(ZoneId zone) {
+            this.zone = zone;
+        }
+
+        void fix(LocalDate date) {
+            fixed = date.atStartOfDay(zone).toInstant();
+        }
+
+        void clear() {
+            fixed = null;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId z) {
+            TestClock c = new TestClock(z);
+            c.fixed = fixed;
+            return c;
+        }
+
+        @Override
+        public Instant instant() {
+            return fixed != null ? fixed : Clock.system(zone).instant();
+        }
+    }
+
+    @TestConfiguration
+    static class TestClockConfig {
+        @Bean
+        @Primary
+        TestClock testClock(@Value("${pm.system.zone:Asia/Tokyo}") String zone) {
+            return new TestClock(ZoneId.of(zone));
+        }
     }
 }

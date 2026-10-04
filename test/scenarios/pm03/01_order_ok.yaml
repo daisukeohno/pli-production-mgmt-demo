@@ -1,14 +1,13 @@
 id: PM03-01
 title: 製造指示登録（在庫十分、正常登録）
 screen: PM03
-status: pending
 source: docs/design.md §4 PM03-1
 description: >
   10000014 を 10 台指示。必要数 = 指示数量×員数÷歩留まり率（切り上げ）
   20000011:10 / 20000035:CEIL(20/0.95)=22 / 20000059:CEIL(20/0.98)=21 / 20000073:10 → すべて在庫内。
   製造指示番号は SEQ_CTL（WORK_ORDER,26,2）から W260003。
 preconditions:
-  - システム日付が 2026 年（JST）であること
+  fixedClock: '2026-10-01'   # システム日付を 2026 年（JST）に固定
 steps:
   - name: 初回起動
     request: { method: GET, path: /api/pm03 }
@@ -25,7 +24,7 @@ steps:
         - { path: $.fields.itemName, equals: 精密減速機ユニットA型 }
   - name: WORK_ORDER に登録
     db:
-      sql: "SELECT ITEM_CD, ORDER_QTY, STATUS FROM SANSEKI.WORK_ORDER WHERE WORK_ORDER_NO = 'W260003'"
+      sql: "SELECT ITEM_CD, CAST(ORDER_QTY AS INT) AS ORDER_QTY, STATUS FROM SANSEKI.WORK_ORDER WHERE WORK_ORDER_NO = 'W260003'"
       expect:
         - { path: '$[0].ORDER_QTY', equals: 10 }
         - { path: '$[0].STATUS', equals: '0' }
