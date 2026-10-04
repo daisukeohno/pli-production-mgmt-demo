@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -22,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -38,6 +41,9 @@ class Pm02ConcurrencyTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    PlatformTransactionManager txManager;
 
     @BeforeEach
     void reset() {
@@ -101,6 +107,37 @@ class Pm02ConcurrencyTest {
         assertThat((String) JsonPath.read(r.body(), "$.msgId")).isEqualTo("M011");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM SANSEKI.STOCK WHERE ITEM_CD = '30000018'", Integer.class))
                 .isZero();
+    }
+
+    @Test
+    void 出庫と同時にPM01が区分を変えたら変更後の区分で判定する() throws Exception {
+        // 90000027（消耗品, 在庫 15）を PM01 が部品へ変更中（未コミット）に 20 出庫 → コミット後の区分 '2' で M011
+        HttpClient a = client();
+        send(a, "GET", null);
+        CountDownLatch updated = new CountDownLatch(1);
+        CountDownLatch commit = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> pm01 = pool.submit(() -> new TransactionTemplate(txManager).executeWithoutResult(tx -> {
+                jdbc.update("UPDATE SANSEKI.ITEM_MST SET ITEM_KBN = '2' WHERE ITEM_CD = '90000027'");
+                updated.countDown();
+                try {
+                    commit.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }));
+            updated.await();
+            Future<HttpResponse<String>> issue = pool.submit((Callable<HttpResponse<String>>) () -> send(a, "POST",
+                    "{\"aid\":\"ENTER\",\"itemCd\":\"90000027\",\"ioKbn\":\"2\",\"ioQty\":\"20\"}"));
+            Thread.sleep(300);
+            commit.countDown();
+            pm01.get();
+            assertMsg(issue.get(), 422, "M011", "F-IOQTY");
+        } finally {
+            pool.shutdown();
+        }
+        assertThat(stockQty("90000027")).isEqualByComparingTo("15");
     }
 
     @Test

@@ -47,7 +47,7 @@ docs/
 ```
 backend/   Spring Boot 3 / Java 17（H2 DB2 モード。起動時に db2/ddl と db2/data を投入）
 frontend/  React + Vite + TypeScript（/api を backend:8080 へプロキシ）
-test/scenarios/  design.md §4 のシナリオ定義（YAML）。PM01 は active、PM02/PM03 は pending
+test/scenarios/  design.md §4 のシナリオ定義（YAML）。PM01/PM02 は active、PM03 は pending
 ```
 
 ```

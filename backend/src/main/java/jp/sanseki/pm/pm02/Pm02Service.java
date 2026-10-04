@@ -94,10 +94,11 @@ public class Pm02Service {
     }
 
     /**
-     * 入出庫登録。STOCK を行ロック付きで再読込してから加減算する。
+     * 入出庫登録。ITEM_MST・STOCK を行ロック付きで再読込してから加減算する。
      * 品目区分 '9'（消耗品）のみマイナス在庫を許容し、それ以外は在庫不足で M011。
      */
-    private Result register(Commarea ca, StockItem item, String ioKbn, BigDecimal qty) {
+    private Result register(Commarea ca, StockItem shown, String ioKbn, BigDecimal qty) {
+        StockItem item = lockOrM002(ca, shown.itemCd());
         BigDecimal delta = IO_KBN_RECEIPT.equals(ioKbn) ? qty : qty.negate();
         BigDecimal newQty;
         try {
@@ -177,7 +178,14 @@ public class Pm02Service {
     }
 
     private StockItem findOrM002(Commarea ca, String itemCd) {
-        Optional<StockItem> item = repo.findActiveItem(itemCd);
+        return orM002(ca, repo.findActiveItem(itemCd));
+    }
+
+    private StockItem lockOrM002(Commarea ca, String itemCd) {
+        return orM002(ca, repo.lockActiveItem(itemCd));
+    }
+
+    private static StockItem orM002(Commarea ca, Optional<StockItem> item) {
         if (item.isEmpty()) {
             ca.pm02.itemCd = "";
             ca.pm02.ioKbn = "";

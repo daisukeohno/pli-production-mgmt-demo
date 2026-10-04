@@ -33,6 +33,21 @@ public class StockRepository {
                 cd(itemCd)).stream().findFirst();
     }
 
+    /**
+     * 入出庫直前の品目再読込（ITEM_MST 行ロック取得）。PM01 の区分変更・論理削除と直列化する。
+     * ロック順は ITEM_MST → STOCK。stockQty は null。
+     */
+    public Optional<StockItem> lockActiveItem(String itemCd) {
+        return jdbc.query("SELECT ITEM_CD, ITEM_NAME, ITEM_KBN FROM SANSEKI.ITEM_MST"
+                        + " WHERE ITEM_CD = ? AND DEL_FLG = '0' FOR UPDATE",
+                (rs, i) -> new StockItem(
+                        FixedChar.rtrim(rs.getString("ITEM_CD")),
+                        FixedChar.rtrim(rs.getString("ITEM_NAME")),
+                        FixedChar.rtrim(rs.getString("ITEM_KBN")),
+                        null),
+                cd(itemCd)).stream().findFirst();
+    }
+
     /** 入出庫直前の再読込（STOCK 行ロック取得）。 */
     public Optional<StockRow> findForUpdate(String itemCd) {
         return jdbc.query("SELECT STOCK_QTY, UPD_TMS FROM SANSEKI.STOCK WHERE ITEM_CD = ? FOR UPDATE",
