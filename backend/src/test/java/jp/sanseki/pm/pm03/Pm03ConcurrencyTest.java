@@ -27,6 +27,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.jayway.jsonpath.JsonPath;
 
 import jp.sanseki.pm.common.db.Db2SchemaInitializer;
+import jp.sanseki.pm.common.util.Pmutl01;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class Pm03ConcurrencyTest {
@@ -40,6 +41,9 @@ class Pm03ConcurrencyTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    Pmutl01 pmutl01;
+
     @BeforeEach
     void reset() {
         db.reset();
@@ -47,6 +51,9 @@ class Pm03ConcurrencyTest {
 
     @Test
     void 別端末からの同時登録でも製造指示番号が重複しない() throws Exception {
+        // 年が替わると連番は 1 へ振り直されるため、実行時点の年度で SEQ_NO=2 に揃えておく
+        jdbc.update("UPDATE SANSEKI.SEQ_CTL SET SEQ_YY = ?, SEQ_NO = 2 WHERE SEQ_NAME = 'WORK_ORDER'",
+                currentYy());
         int n = 6;
         List<HttpClient> terminals = new ArrayList<>();
         for (int i = 0; i < n; i++) {
@@ -68,7 +75,7 @@ class Pm03ConcurrencyTest {
             orderNos.add(JsonPath.read(r.body(), "$.fields.orderNo"));
         }
         pool.shutdown();
-        // SEQ_CTL は初期値 SEQ_NO=2。同時登録 n 件で W260003〜W260008 が一意に採番される
+        // SEQ_NO=2 からの同時登録 n 件で +n まで一意に採番される（年度は実行時点の値）
         assertThat(orderNos).hasSize(n);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM SANSEKI.WORK_ORDER", Integer.class))
                 .isEqualTo(2 + n);
@@ -127,6 +134,10 @@ class Pm03ConcurrencyTest {
         assertThat(jdbc.queryForObject(
                 "SELECT SEQ_NO FROM SANSEKI.SEQ_CTL WHERE SEQ_NAME = 'WORK_ORDER'", Integer.class))
                 .isEqualTo(2);
+    }
+
+    private String currentYy() {
+        return pmutl01.getSysDate().substring(2, 4);
     }
 
     private HttpClient client() {

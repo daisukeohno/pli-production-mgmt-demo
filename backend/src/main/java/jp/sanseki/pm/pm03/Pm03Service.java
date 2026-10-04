@@ -70,10 +70,12 @@ public class Pm03Service {
         return switch (aid) {
             case CLEAR -> start(ca);
             case PF3 -> send(ca, emptyFields(), null, null, true, false);
-            case PF4 ->
+            case PF4 -> {
                 // F-NGLIST01〜10 へ CA03-NG-LIST を送信するのは PF4 のみ。
-                // 画面項目は CA03 に退避した直前の登録入力をそのまま返す（入力消去しない）
-                send(ca, caFields(ca), null, null, false, true);
+                // 画面項目は受信した入力をそのまま返す（編集中の値を消さない）
+                saveInput(ca, input);
+                yield send(ca, input, null, null, false, true);
+            }
             case ENTER -> enter(ca, input);
             // PM03 で未定義の PF キーは無視して再表示
             default -> send(ca, input, null, null, false, false);
@@ -267,14 +269,6 @@ public class Pm03Service {
 
     private static Pm03Response.Fields emptyFields() {
         return new Pm03Response.Fields("", "", "", "", "");
-    }
-
-    /** CA03 に退避した直前の登録入力を画面項目へ戻す。F-ITEMNM / F-ORDERNO は CA03 に無いため空白。 */
-    private static Pm03Response.Fields caFields(Commarea ca) {
-        return new Pm03Response.Fields(
-                FixedChar.rtrim(ca.pm03.itemCd), "",
-                ca.pm03.orderQty.signum() > 0 ? ca.pm03.orderQty.toPlainString() : "",
-                FixedChar.rtrim(ca.pm03.dueDate), "");
     }
 
     /** 'YYYY-MM-DD' 厳密パース（2026-02-30 や 2026/12/01 はエラー）。 */
