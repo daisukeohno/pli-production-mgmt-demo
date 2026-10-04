@@ -1,7 +1,6 @@
 id: PM03-05
 title: 完成予定日フォーマット不正（M016）
 screen: PM03
-status: pending
 source: docs/design.md §4 PM03-5
 steps:
   - name: 初回起動
