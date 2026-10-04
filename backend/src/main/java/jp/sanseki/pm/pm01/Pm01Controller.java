@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.WebUtils;
 
 import jp.sanseki.pm.common.commarea.Commarea;
 import jp.sanseki.pm.common.commarea.CommareaStore;
@@ -33,22 +34,27 @@ public class Pm01Controller {
 
     @GetMapping
     public ResponseEntity<Pm01Response> start(HttpSession session) {
-        Commarea ca = new Commarea();
-        Pm01Service.Result r = service.start(ca);
-        store.returnWith(session, ca);
-        return ResponseEntity.ok(r.response());
+        synchronized (WebUtils.getSessionMutex(session)) {
+            Commarea ca = new Commarea();
+            Pm01Service.Result r = service.start(ca);
+            store.returnWith(session, ca);
+            return ResponseEntity.ok(r.response());
+        }
     }
 
     @PostMapping
     public ResponseEntity<Pm01Response> input(@RequestBody Pm01Request req, HttpSession session) {
-        Commarea ca = store.receive(session);
-        Pm01Service.Result r = service.handle(ca, req);
-        if (r.response().ended()) {
-            store.end(session);
-        } else {
-            store.returnWith(session, ca);
+        // 1 端末で同時に実行されるタスクは 1 つ（CICS と同じく端末単位で直列化）
+        synchronized (WebUtils.getSessionMutex(session)) {
+            Commarea ca = store.receive(session);
+            Pm01Service.Result r = service.handle(ca, req);
+            if (r.response().ended()) {
+                store.end(session);
+            } else {
+                store.returnWith(session, ca);
+            }
+            HttpStatus status = MessageStatus.of(r.msg());
+            return ResponseEntity.status(status).body(r.response());
         }
-        HttpStatus status = MessageStatus.of(r.msg());
-        return ResponseEntity.status(status).body(r.response());
     }
 }

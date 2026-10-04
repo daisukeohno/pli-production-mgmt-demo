@@ -33,6 +33,8 @@ export function ScreenFrame({ scrnId, title, sysDate, message, pfKeys, onAid, ch
   const enabled = new Set(pfKeys.map((k) => k.aid));
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    // IME 変換中（確定の Enter を含む）は注意キーとして扱わない
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     const aid = KEY_TO_AID[e.key];
     if (aid && enabled.has(aid)) {
       e.preventDefault();

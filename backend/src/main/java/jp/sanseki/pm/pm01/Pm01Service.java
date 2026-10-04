@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -116,7 +117,12 @@ public class Pm01Service {
             throw error(PmMessage.M003, Pm01Field.F_ITEMCD);
         }
         LocalDateTime now = pmutl01.currentTimestamp();
-        repo.insert(f.itemCd(), f.itemName(), f.itemKbn(), f.stockUnit(), now);
+        try {
+            repo.insert(f.itemCd(), f.itemName(), f.itemKbn(), f.stockUnit(), now);
+        } catch (DuplicateKeyException e) {
+            // 存在確認後に他端末が同一コードを登録した場合（SQLCODE -803 相当）
+            throw error(PmMessage.M003, Pm01Field.F_ITEMCD);
+        }
         ca.pm01.itemCd = f.itemCd();
         ca.pm01.updTms = Db2Timestamp.format(now);
         return send(ca, f, PmMessage.M005, null, false);
