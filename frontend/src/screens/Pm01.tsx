@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { transact, type Aid, type ScreenMessage } from '../api/client';
+import { EndedPanel } from '../components/EndedPanel';
+import {
+  FormGrid,
+  FormRow,
+  SegmentedControl,
+  SelectInput,
+  TextInput,
+  focusField,
+  withCurrent,
+  type Option,
+} from '../components/Fields';
+import { ListTable } from '../components/ListTable';
 import { ScreenFrame, type PfKey } from '../components/ScreenFrame';
 
 interface Fields {
@@ -31,14 +43,23 @@ const PAGE_SIZE = 10;
 const EMPTY: Fields = { func: '', itemCd: '', itemName: '', itemKbn: '', stockUnit: '' };
 
 const PF_KEYS: PfKey[] = [
-  { aid: 'ENTER', label: 'Enter:実行' },
-  { aid: 'PF3', label: 'PF3:終了' },
-  { aid: 'PF7', label: 'PF7:前頁' },
-  { aid: 'PF8', label: 'PF8:次頁' },
-  { aid: 'CLEAR', label: 'CLEAR(Esc):取消' },
+  { aid: 'ENTER', label: '実行' },
+  { aid: 'PF3', label: '終了' },
+  { aid: 'PF7', label: '前頁' },
+  { aid: 'PF8', label: '次頁' },
+  { aid: 'CLEAR', label: '取消' },
 ];
 
 const KBN_LABEL: Record<string, string> = { '1': '製品', '2': '部品', '9': '消耗品' };
+
+const FUNC_OPTIONS: Option[] = [
+  { value: '1', label: '照会' },
+  { value: '2', label: '登録' },
+  { value: '3', label: '更新' },
+  { value: '4', label: '削除' },
+];
+
+const KBN_OPTIONS: Option[] = Object.entries(KBN_LABEL).map(([value, label]) => ({ value, label: `${value}:${label}` }));
 
 /** PM01 品目マスタ保守 */
 export function Pm01() {
@@ -46,7 +67,7 @@ export function Pm01() {
   const [fields, setFields] = useState<Fields>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [commError, setCommError] = useState<string | null>(null);
-  const refs = useRef<Partial<Record<FieldPos, HTMLInputElement | null>>>({});
+  const refs = useRef<Partial<Record<FieldPos, HTMLElement | null>>>({});
 
   const apply = (res: Pm01Response) => {
     setScreen(res);
@@ -86,29 +107,18 @@ export function Pm01() {
     if (!screen || screen.ended) return;
     const pos = (screen.fieldPos ?? 'F-FUNC') as FieldPos;
     const el = refs.current[pos] ?? refs.current['F-FUNC'];
-    el?.focus();
-    el?.select();
+    focusField(el);
   }, [screen]);
 
   if (screen?.ended) {
-    return (
-      <div className="terminal ended">
-        <p>PM01 品目マスタ保守を終了しました。</p>
-        <button type="button" onClick={() => void start()} autoFocus>
-          再開
-        </button>
-      </div>
-    );
+    return <EndedPanel message="PM01 品目マスタ保守を終了しました。" onRestart={() => void start()} />;
   }
 
   // F-ITEMNM / F-KBN / F-UNIT は機能 2（登録）・3（更新）のみ入力可
   const attrEditable = fields.func === '2' || fields.func === '3';
-  const set = (k: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFields({ ...fields, [k]: e.target.value });
-  const errorAt = (pos: FieldPos) => (screen?.msgId && screen.fieldPos === pos ? 'error' : '');
-
-  const rows: (ListRow | null)[] = [...(screen?.list ?? [])];
-  while (rows.length < PAGE_SIZE) rows.push(null);
+  const errorAt = (pos: FieldPos) => !!screen?.msgId && screen.fieldPos === pos;
 
   return (
     <ScreenFrame
@@ -119,91 +129,100 @@ export function Pm01() {
       pfKeys={PF_KEYS}
       onAid={(aid) => void onAid(aid)}
     >
-      <div className="row">
-        <label htmlFor="F-FUNC">機能コード</label>
-        <input
-          id="F-FUNC"
-          ref={(el) => (refs.current['F-FUNC'] = el)}
-          className={`fld w1 ${errorAt('F-FUNC')}`}
-          maxLength={1}
-          value={fields.func}
-          onChange={set('func')}
-        />
-        <span className="hint">1:照会 2:登録 3:更新 4:削除</span>
-      </div>
-      <div className="row">
-        <label htmlFor="F-ITEMCD">品目コード</label>
-        <input
-          id="F-ITEMCD"
-          ref={(el) => (refs.current['F-ITEMCD'] = el)}
-          className={`fld w8 ${errorAt('F-ITEMCD')}`}
-          maxLength={8}
-          value={fields.itemCd}
-          onChange={set('itemCd')}
-        />
-      </div>
-      <div className="row">
-        <label htmlFor="F-ITEMNM">品目名</label>
-        <input
-          id="F-ITEMNM"
-          ref={(el) => (refs.current['F-ITEMNM'] = el)}
-          className={`fld w20 ${errorAt('F-ITEMNM')}`}
-          maxLength={20}
-          readOnly={!attrEditable}
-          tabIndex={attrEditable ? 0 : -1}
-          value={fields.itemName}
-          onChange={set('itemName')}
-        />
-      </div>
-      <div className="row">
-        <label htmlFor="F-KBN">品目区分</label>
-        <input
-          id="F-KBN"
-          ref={(el) => (refs.current['F-KBN'] = el)}
-          className={`fld w1 ${errorAt('F-KBN')}`}
-          maxLength={1}
-          readOnly={!attrEditable}
-          tabIndex={attrEditable ? 0 : -1}
-          value={fields.itemKbn}
-          onChange={set('itemKbn')}
-        />
-        <span className="hint">1:製品 2:部品 9:消耗品</span>
-      </div>
-      <div className="row">
-        <label htmlFor="F-UNIT">単位</label>
-        <input
-          id="F-UNIT"
-          ref={(el) => (refs.current['F-UNIT'] = el)}
-          className={`fld w4 ${errorAt('F-UNIT')}`}
-          maxLength={4}
-          readOnly={!attrEditable}
-          tabIndex={attrEditable ? 0 : -1}
-          value={fields.stockUnit}
-          onChange={set('stockUnit')}
-        />
-      </div>
+      <FormGrid>
+        <FormRow label="機能" labelId="F-FUNC-label">
+          <SegmentedControl
+            id="F-FUNC"
+            labelledBy="F-FUNC-label"
+            options={FUNC_OPTIONS}
+            value={fields.func}
+            onChange={(func) => setFields({ ...fields, func })}
+            invalid={errorAt('F-FUNC')}
+            focusRef={(el) => (refs.current['F-FUNC'] = el)}
+          />
+        </FormRow>
+        <FormRow label="品目コード" htmlFor="F-ITEMCD">
+          <TextInput
+            id="F-ITEMCD"
+            ref={(el) => (refs.current['F-ITEMCD'] = el)}
+            className="w-36 tabular-nums"
+            invalid={errorAt('F-ITEMCD')}
+            maxLength={8}
+            value={fields.itemCd}
+            onChange={set('itemCd')}
+          />
+        </FormRow>
+        <FormRow label="品目名" htmlFor="F-ITEMNM">
+          <TextInput
+            id="F-ITEMNM"
+            ref={(el) => (refs.current['F-ITEMNM'] = el)}
+            className="w-full max-w-md"
+            invalid={errorAt('F-ITEMNM')}
+            maxLength={20}
+            readOnly={!attrEditable}
+            tabIndex={attrEditable ? 0 : -1}
+            value={fields.itemName}
+            onChange={set('itemName')}
+          />
+        </FormRow>
+        <FormRow label="品目区分" htmlFor="F-KBN">
+          <SelectInput
+            id="F-KBN"
+            ref={(el) => (refs.current['F-KBN'] = el)}
+            className="w-40"
+            invalid={errorAt('F-KBN')}
+            disabled={!attrEditable}
+            value={fields.itemKbn}
+            onChange={set('itemKbn')}
+          >
+            <option value="">未選択</option>
+            {withCurrent(KBN_OPTIONS, fields.itemKbn).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </SelectInput>
+        </FormRow>
+        <FormRow label="単位" htmlFor="F-UNIT">
+          <TextInput
+            id="F-UNIT"
+            ref={(el) => (refs.current['F-UNIT'] = el)}
+            className="w-24"
+            invalid={errorAt('F-UNIT')}
+            maxLength={4}
+            readOnly={!attrEditable}
+            tabIndex={attrEditable ? 0 : -1}
+            value={fields.stockUnit}
+            onChange={set('stockUnit')}
+          />
+        </FormRow>
+      </FormGrid>
 
-      <div className="row list-head">
-        <span className="c-cd">品目コード</span>
-        <span className="c-nm">品目名</span>
-        <span className="c-kbn">区分</span>
-        <span className="page">頁 {screen?.pageNo ?? ''}</span>
-      </div>
-      <ol className="list" data-testid="item-list">
-        {rows.map((r, i) => (
-          <li key={i} className="row" data-testid={`F-LIST${String(i + 1).padStart(2, '0')}`}>
-            {r && (
-              <>
-                <span className="c-cd">{r.itemCd}</span>
-                <span className="c-nm">{r.itemName}</span>
-                <span className="c-kbn">
-                  {r.itemKbn} {KBN_LABEL[r.itemKbn] ?? ''}
-                </span>
-              </>
-            )}
-          </li>
-        ))}
-      </ol>
+      <ListTable<ListRow>
+        title="品目一覧"
+        aside={
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium tabular-nums text-slate-600">
+            頁 {screen?.pageNo ?? ''}
+          </span>
+        }
+        columns={[
+          { header: '品目コード', className: 'w-32 tabular-nums', render: (r) => r.itemCd },
+          { header: '品目名', render: (r) => r.itemName },
+          {
+            header: '品目区分',
+            className: 'w-32',
+            render: (r) => (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="tabular-nums text-slate-400">{r.itemKbn}</span> {KBN_LABEL[r.itemKbn] ?? ''}
+              </span>
+            ),
+          },
+        ]}
+        rows={screen?.list ?? []}
+        size={PAGE_SIZE}
+        testId="item-list"
+        rowTestIdPrefix="F-LIST"
+      />
     </ScreenFrame>
   );
 }
