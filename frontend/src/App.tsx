@@ -17,7 +17,13 @@ export function App() {
     <div className="app">
       <nav className="screen-select" aria-label="画面選択" style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
         {SCREENS.map((s) => (
-          <button key={s.id} type="button" aria-pressed={screenId === s.id} onClick={() => setScreenId(s.id)}>
+          <button
+            key={s.id}
+            type="button"
+            aria-pressed={screenId === s.id}
+            onClick={() => setScreenId(s.id)}
+            style={screenId === s.id ? { fontWeight: 'bold', background: '#1f6feb', color: '#fff', borderColor: '#1f6feb' } : undefined}
+          >
             {s.label}
           </button>
         ))}
