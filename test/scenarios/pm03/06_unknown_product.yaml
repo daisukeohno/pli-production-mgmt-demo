@@ -1,7 +1,6 @@
 id: PM03-06
 title: 存在しない製品コードでの登録（M002）
 screen: PM03
-status: pending
 source: docs/design.md §4 PM03-6
 steps:
   - name: 初回起動
