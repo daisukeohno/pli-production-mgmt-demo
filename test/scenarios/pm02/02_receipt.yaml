@@ -1,7 +1,7 @@
 id: PM02-02
 title: 入庫登録
 screen: PM02
-status: pending
+status: active
 source: docs/design.md §4 PM02-2
 description: 入出庫区分1（入庫）で在庫数量が加算され M012。
 steps:
@@ -17,9 +17,13 @@ steps:
       body:
         - { path: $.msgId, equals: M012 }
         - { path: $.fields.stockQty, equals: 100 }
+        - { path: $.msgText, equals: 入出庫を登録しました。 }
+        - { path: $.fields.itemName, equals: ハウジングケース }
+        - { path: $.fields.ioQty, equals: '' }
+        - { path: $.fieldPos, isNull: true }
   - name: DB 在庫 80 → 100
     db:
-      sql: "SELECT STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000028'"
+      sql: "SELECT CAST(STOCK_QTY AS INTEGER) AS STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000028'"
       expect:
         - { path: '$[0].STOCK_QTY', equals: 100 }
   - name: 入出庫区分不正は M010
@@ -40,3 +44,8 @@ steps:
       body:
         - { path: $.msgId, equals: M008 }
         - { path: $.fieldPos, equals: F-IOQTY }
+  - name: エラー時は DB 在庫 100 のまま
+    db:
+      sql: "SELECT CAST(STOCK_QTY AS INTEGER) AS STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000028'"
+      expect:
+        - { path: '$[0].STOCK_QTY', equals: 100 }

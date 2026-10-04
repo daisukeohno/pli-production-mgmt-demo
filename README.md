@@ -59,5 +59,7 @@ cd backend && mvn test                 # 単体テスト＋シナリオ（実 HT
 - COMMAREA（PMCOMM）は HTTP セッションに保持（1 セッション＝1 端末）。CA01-LOCK-FLG は移植していません。
 - エラーは `{msgId, msgText, fieldPos}`。fieldPos は BMS 項目名（例 `F-ITEMCD`）。
 - PFキー: Enter / PF3 / PF7 / PF8 / CLEAR(Esc)。PF9（旧一括出力）はありません。
+- PM02 在庫照会・入出庫登録: 移行済み（`/api/pm02`、`test/scenarios/pm02` は active）。PFキーは Enter / PF3 / CLEAR(Esc)。
+  品目区分 9（消耗品）のみマイナス在庫を許容し、他区分の在庫不足は M011。画面上部のボタンで PM01 / PM02 を切り替えます。
 
 以上

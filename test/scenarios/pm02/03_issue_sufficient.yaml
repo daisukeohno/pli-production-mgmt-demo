@@ -1,7 +1,7 @@
 id: PM02-03
 title: 出庫登録（在庫十分）
 screen: PM02
-status: pending
+status: active
 source: docs/design.md §4 PM02-3
 steps:
   - name: 初回起動
@@ -16,8 +16,9 @@ steps:
       body:
         - { path: $.msgId, equals: M012 }
         - { path: $.fields.stockQty, equals: 150 }
+        - { path: $.fields.itemName, equals: ベアリング6204 }
   - name: DB 在庫 150
     db:
-      sql: "SELECT STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000059'"
+      sql: "SELECT CAST(STOCK_QTY AS INTEGER) AS STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000059'"
       expect:
         - { path: '$[0].STOCK_QTY', equals: 150 }

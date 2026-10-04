@@ -1,7 +1,7 @@
 id: PM02-04
 title: 出庫登録（部品区分で在庫不足→M011）
 screen: PM02
-status: pending
+status: active
 source: docs/design.md §4 PM02-4 / §2 ルール5
 description: 品目区分 '2'（部品）は在庫不足の出庫を受け付けない（M011）。
 steps:
@@ -17,8 +17,25 @@ steps:
       body:
         - { path: $.msgId, equals: M011 }
         - { path: $.fieldPos, equals: F-IOQTY }
+        - { path: $.msgText, equals: 在庫が不足しています。出庫数量を確認してください。 }
+        - { path: $.fields.stockQty, equals: 25 }
+        - { path: $.fields.ioQty, equals: '30' }
   - name: 在庫は変わらない
     db:
-      sql: "SELECT STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000103'"
+      sql: "SELECT CAST(STOCK_QTY AS INTEGER) AS STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000103'"
       expect:
         - { path: '$[0].STOCK_QTY', equals: 25 }
+  - name: 在庫ちょうど（25）の出庫は可能で 0 になる
+    request:
+      path: /api/pm02
+      body: { aid: ENTER, itemCd: '20000103', ioKbn: '2', ioQty: '25' }
+    expect:
+      status: 200
+      body:
+        - { path: $.msgId, equals: M012 }
+        - { path: $.fields.stockQty, equals: 0 }
+  - name: DB 在庫 0
+    db:
+      sql: "SELECT CAST(STOCK_QTY AS INTEGER) AS STOCK_QTY FROM SANSEKI.STOCK WHERE ITEM_CD = '20000103'"
+      expect:
+        - { path: '$[0].STOCK_QTY', equals: 0 }
