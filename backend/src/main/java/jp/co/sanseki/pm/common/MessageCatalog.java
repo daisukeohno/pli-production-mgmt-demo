@@ -29,7 +29,7 @@ public enum MessageCatalog {
     M016("完成予定日の形式が不正です。YYYY-MM-DDで入力してください。", HttpStatus.BAD_REQUEST),
     M017("他の端末で更新されています。再照会してください。", HttpStatus.CONFLICT),
     /** 新規（D-06）。PMMSG.inc には存在しない。 */
-    M018("製造指示番号の連番が上限(9999)を超えました。", HttpStatus.UNPROCESSABLE_ENTITY);
+    M018("製造指示番号の連番が上限(9999)に達しました。", HttpStatus.UNPROCESSABLE_ENTITY);
 
     private final String text;
     private final HttpStatus httpStatus;

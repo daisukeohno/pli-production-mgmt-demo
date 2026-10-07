@@ -52,7 +52,7 @@ class MessageCatalogTest {
         Map<String, String> expected = pmmsg();
         assertThat(Arrays.stream(MessageCatalog.values()).map(MessageCatalog::id).filter(id -> !expected.containsKey(id)))
                 .containsExactly("M018");
-        assertThat(MessageCatalog.M018.text()).isEqualTo("製造指示番号の連番が上限(9999)を超えました。");
+        assertThat(MessageCatalog.M018.text()).isEqualTo("製造指示番号の連番が上限(9999)に達しました。");
     }
 
     @Test
