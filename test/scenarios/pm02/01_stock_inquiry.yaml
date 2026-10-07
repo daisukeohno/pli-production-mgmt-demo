@@ -1,0 +1,32 @@
+id: PM02-01
+category: golden
+design_ref: PM02-1
+title: 在庫照会（正常系）
+screen: PM02
+rules: []
+decisions: [D-12]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+# 照会 = F-ITEMCD のみ入力して Enter（F-IOKBN・F-IOQTY は空白）
+steps:
+  - name: 部品 20000059 を照会
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000059'}
+    expect:
+      header: {title: PM02 在庫照会・入出庫登録, date: 2026/10/07}
+      fields: {F-ITEMNM: ベアリング6204, F-STOCKQTY: 200}
+      msg: null   # D-12
+  - name: 消耗品 90000027 を照会
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '90000027'}
+    expect:
+      fields: {F-ITEMNM: 洗浄スプレー, F-STOCKQTY: 15}
+      msg: null
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

@@ -1,0 +1,29 @@
+id: PM03-B03
+category: boundary
+title: 年部分は暦年（1〜3 月も新しい年で採番）
+screen: PM03
+rules: [R7]
+decisions: [D-04, D-05]
+tags: [year-rollover]
+clock: '2027-03-31T17:00:00+09:00'
+given: {}
+steps:
+  # 2027-03-31: 暦年下2桁 '27' ≠ SEQ_YY '26' → SEQ_YY='27'、SEQ_NO=1 → W270001
+  #   （4 月始まりの年度なら 2026 年度で W260003 になるが、D-04 で暦年を採用）
+  - name: 2027-03-31 に登録 → W270001
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000021', F-ORDERQTY: '5', F-DUEDATE: '2027-04-30'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2027/03/31}
+      fields: {F-ORDERNO: W270001}
+      msg: {id: M013, text: 製造指示を登録しました。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER:
+    rows:
+      - {WORK_ORDER_NO: W270001, ITEM_CD: '10000021', ORDER_QTY: 5, DUE_DATE: '2027-04-30', STATUS: '0', CRT_TMS: '@now'}
+  SEQ_CTL:
+    rows:
+      - {SEQ_NAME: WORK_ORDER, SEQ_YY: '27', SEQ_NO: 1}

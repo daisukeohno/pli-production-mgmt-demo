@@ -1,0 +1,41 @@
+id: PM03-05
+category: golden
+design_ref: PM03-5
+title: 完成予定日フォーマット不正（M016）
+screen: PM03
+rules: []
+decisions: [D-17]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  - name: スラッシュ区切り 2026/12/01 → M016
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '10', F-DUEDATE: 2026/12/01}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/10/07}
+      msg: {id: M016, text: 完成予定日の形式が不正です。YYYY-MM-DDで入力してください。}   # D-17: 全文を表示
+  - name: 区切りなし 20261201 → M016
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '10', F-DUEDATE: '20261201'}
+    expect:
+      msg: {id: M016, text: 完成予定日の形式が不正です。YYYY-MM-DDで入力してください。}
+  - name: 存在しない日付 2026-02-30 → M016
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '10', F-DUEDATE: '2026-02-30'}
+    expect:
+      msg: {id: M016, text: 完成予定日の形式が不正です。YYYY-MM-DDで入力してください。}
+  - name: 13 月 2026-13-01 → M016
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '10', F-DUEDATE: '2026-13-01'}
+    expect:
+      msg: {id: M016, text: 完成予定日の形式が不正です。YYYY-MM-DDで入力してください。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

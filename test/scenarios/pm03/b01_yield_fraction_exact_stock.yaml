@@ -1,0 +1,33 @@
+id: PM03-B01
+category: boundary
+title: 歩留率端数の切り上げ値と在庫が同数なら登録できる
+screen: PM03
+rules: [R6, R7]
+decisions: [D-15]
+tags: [yield-fraction]
+clock: '2026-10-07T10:00:00+09:00'
+given:
+  STOCK:
+    update:
+      - {key: {ITEM_CD: '20000035'}, set: {STOCK_QTY: 106}}
+steps:
+  # PM03-03 と同じ計算。20000035: 50 × 2.00 ÷ 0.95 = 105.263… → CEIL 106、在庫 106 → 106 > 106 ではないので不足なし
+  #   他部品: 20000011 50 ≤ 120 / 20000059 103 ≤ 200 / 20000073 50 ≤ 300
+  # 採番: '26' = SEQ_YY → SEQ_NO 3 → W260003
+  - name: 製品 10000014 を 50 台 → M013、W260003
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '50', F-DUEDATE: '2026-12-01'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/10/07}
+      fields: {F-ORDERNO: W260003}
+      msg: {id: M013, text: 製造指示を登録しました。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged   # given の 106 のまま（減算しない）
+  WORK_ORDER:
+    rows:
+      - {WORK_ORDER_NO: W260003, ITEM_CD: '10000014', ORDER_QTY: 50, DUE_DATE: '2026-12-01', STATUS: '0', CRT_TMS: '@now'}
+  SEQ_CTL:
+    rows:
+      - {SEQ_NAME: WORK_ORDER, SEQ_YY: '26', SEQ_NO: 3}

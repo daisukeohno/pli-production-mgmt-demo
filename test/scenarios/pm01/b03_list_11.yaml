@@ -1,0 +1,49 @@
+id: PM01-B03
+category: boundary
+title: 一覧 11 件（2 頁目が 1 件）
+screen: PM01
+rules: [R2]
+decisions: [D-09]
+tags: [list-11]
+clock: '2026-10-07T10:00:00+09:00'
+given:
+  ITEM_MST:
+    update:   # 末尾 4 件を論理削除済みにして有効品目を 11 件にする
+      - {key: {ITEM_CD: '20000103'}, set: {DEL_FLG: '1'}}
+      - {key: {ITEM_CD: '90000010'}, set: {DEL_FLG: '1'}}
+      - {key: {ITEM_CD: '90000027'}, set: {DEL_FLG: '1'}}
+      - {key: {ITEM_CD: '90000034'}, set: {DEL_FLG: '1'}}
+steps:
+  - name: 初期表示 → 1 頁目 10 件、PF8 可
+    action:
+      key: START
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      page: 1
+      list:
+        - ['10000014', 精密減速機ユニットA型, '1']
+        - ['10000021', 精密減速機ユニットB型, '1']
+        - ['20000011', 主軸アセンブリ, '2']
+        - ['20000028', ハウジングケース, '2']
+        - ['20000035', 歯車セットA, '2']
+        - ['20000042', 歯車セットB, '2']
+        - ['20000059', ベアリング6204, '2']
+        - ['20000066', ベアリング6205, '2']
+        - ['20000073', オイルシール, '2']
+        - ['20000080', 固定ボルトセット, '2']
+      controls: {PF7: false, PF8: true}
+      msg: null
+  - name: PF8 → 2 頁目は 11 件目の 1 件のみ、PF8 不可
+    action:
+      key: PF8
+    expect:
+      page: 2
+      list:
+        - ['20000097', 端子台, '2']
+      controls: {PF7: true, PF8: false}
+      msg: null
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

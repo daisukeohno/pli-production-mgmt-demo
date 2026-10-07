@@ -1,0 +1,34 @@
+id: PM02-02
+category: golden
+design_ref: PM02-2
+title: 入庫登録
+screen: PM02
+rules: []
+decisions: [D-19]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  - name: 20000035 を照会（在庫 60）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000035'}
+    expect:
+      header: {title: PM02 在庫照会・入出庫登録, date: 2026/10/07}
+      fields: {F-ITEMNM: 歯車セットA, F-STOCKQTY: 60}
+      msg: null
+  # 60 + 40 = 100
+  - name: 入庫 40 → M012、在庫 100
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000035', F-IOKBN: '1', F-IOQTY: '40'}
+    expect:
+      fields: {F-ITEMNM: 歯車セットA, F-STOCKQTY: 100}
+      msg: {id: M012, text: 入出庫を登録しました。}
+db:
+  ITEM_MST: unchanged
+  STOCK:
+    rows:
+      - {ITEM_CD: '20000035', STOCK_QTY: 100, UPD_TMS: '@now'}
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

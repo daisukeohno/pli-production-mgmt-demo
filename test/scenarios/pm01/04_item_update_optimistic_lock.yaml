@@ -1,0 +1,72 @@
+id: PM01-04
+category: golden
+design_ref: PM01-4
+title: 品目更新（楽観排他：他端末更新想定でM017再現）
+screen: PM01
+rules: [R3]
+decisions: [D-20]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+# 端末 A・B は別々の CICS 端末（＝別々の COMMAREA / 新システムでは別々の画面状態）
+steps:
+  - name: 端末A 照会（UPD_TMS=2026-09-01-09.00.00.000000 を CA01-UPD-TMS へ退避）
+    terminal: A
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000073'}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      fields: {F-ITEMNM: オイルシール, F-KBN: '2', F-UNIT: 個}
+      msg: null
+  - name: 端末B 照会（同じ UPD_TMS を退避）
+    terminal: B
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000073'}
+    expect:
+      fields: {F-ITEMNM: オイルシール}
+      msg: null
+  - name: 端末B 更新 → UPD_TMS 一致なので M006（UPD_TMS は現在時刻に変わる）
+    terminal: B
+    action:
+      key: ENTER
+      input: {F-FUNC: '3', F-ITEMCD: '20000073', F-ITEMNM: オイルシールB, F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M006, text: 更新しました。}
+  - name: 端末A 更新 → 退避値と DB の UPD_TMS が不一致で M017（更新しない）
+    terminal: A
+    action:
+      key: ENTER
+      input: {F-FUNC: '3', F-ITEMCD: '20000073', F-ITEMNM: オイルシールA, F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M017, text: 他の端末で更新されています。再照会してください。}
+  - name: 端末A 再照会 → 端末B の更新内容が見える
+    terminal: A
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000073'}
+    expect:
+      fields: {F-ITEMNM: オイルシールB}
+      msg: null
+  - name: 端末A 再照会後の更新は成功
+    terminal: A
+    action:
+      key: ENTER
+      input: {F-FUNC: '3', F-ITEMCD: '20000073', F-ITEMNM: オイルシールA, F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M006, text: 更新しました。}
+  - name: 端末B は古い UPD_TMS のままなので削除も M017（更新・削除とも楽観排他。D-20）
+    terminal: B
+    action:
+      key: ENTER
+      input: {F-FUNC: '4', F-ITEMCD: '20000073'}
+    expect:
+      msg: {id: M017, text: 他の端末で更新されています。再照会してください。}
+db:
+  ITEM_MST:
+    rows:
+      - {ITEM_CD: '20000073', ITEM_NAME: オイルシールA, ITEM_KBN: '2', STOCK_UNIT: 個, DEL_FLG: '0', UPD_TMS: '@now', CRT_TMS: '2015-04-01-09.00.00.000000'}
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

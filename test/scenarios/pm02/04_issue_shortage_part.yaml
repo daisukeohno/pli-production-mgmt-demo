@@ -1,0 +1,38 @@
+id: PM02-04
+category: golden
+design_ref: PM02-4
+title: 出庫登録（部品区分で在庫不足→M011）
+screen: PM02
+rules: [R5]
+decisions: []
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  # 部品 20000103（区分 '2'）在庫 25 − 26 = −1 < 0 → 区分 '9' 以外なので M011、更新しない
+  - name: 部品 20000103 を出庫 26 → M011
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000103', F-IOKBN: '2', F-IOQTY: '26'}
+    expect:
+      header: {title: PM02 在庫照会・入出庫登録, date: 2026/10/07}
+      msg: {id: M011, text: 在庫が不足しています。出庫数量を確認してください。}
+  # 製品 10000021（区分 '1'）在庫 10 − 11 = −1 < 0 → M011
+  - name: 製品 10000021 を出庫 11 → M011（製品もマイナス不可）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000021', F-IOKBN: '2', F-IOQTY: '11'}
+    expect:
+      msg: {id: M011, text: 在庫が不足しています。出庫数量を確認してください。}
+  - name: 再照会しても在庫は 25 のまま
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000103'}
+    expect:
+      fields: {F-ITEMNM: 制御基板, F-STOCKQTY: 25}
+      msg: null
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

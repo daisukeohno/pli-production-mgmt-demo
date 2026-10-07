@@ -1,0 +1,47 @@
+id: PM01-S04
+category: supplemental
+title: 入力チェック（必須・存在・数字以外）
+screen: PM01
+rules: [R1]
+decisions: [D-02, D-21]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  - name: 照会で品目コード未入力 → M004
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: ''}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      msg: {id: M004, text: 必須項目が未入力です。}
+  - name: 登録で品目名未入力 → M004
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: '20000127', F-ITEMNM: '', F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M004, text: 必須項目が未入力です。}
+  # 20000134: 2 0 0 0 0 1 3 → 6 + 1 + 9 = 16 → 16 MOD 10 = 6 → (10 − 6) MOD 10 = 4 → 形式は正常、ITEM_MST に無い
+  - name: 未登録の 20000134 を照会 → M002
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000134'}
+    expect:
+      msg: {id: M002, text: 該当する品目は登録されていません。}
+  - name: 英字を含む品目コードで登録 → M001（D-02：異常終了は再現しない）
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: 'ABCD1234', F-ITEMNM: テスト, F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M001, text: 品目コードが不正です。チェックデジットを確認してください。}
+  - name: 7 桁の品目コードで登録 → M001
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: '2000012', F-ITEMNM: テスト, F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M001, text: 品目コードが不正です。チェックデジットを確認してください。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

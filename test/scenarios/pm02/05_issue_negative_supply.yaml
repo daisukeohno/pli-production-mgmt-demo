@@ -1,0 +1,34 @@
+id: PM02-05
+category: golden
+design_ref: PM02-5
+title: 出庫登録（消耗品区分でマイナス在庫許容を確認）
+screen: PM02
+rules: [R5]
+decisions: [D-16]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  # 消耗品 90000027（区分 '9'）在庫 15 − 20 = −5 < 0 → 区分 '9' なので許容して更新
+  - name: 消耗品 90000027 を出庫 20 → M012、在庫 −5
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '90000027', F-IOKBN: '2', F-IOQTY: '20'}
+    expect:
+      header: {title: PM02 在庫照会・入出庫登録, date: 2026/10/07}
+      fields: {F-ITEMNM: 洗浄スプレー, F-STOCKQTY: -5}
+      msg: {id: M012, text: 入出庫を登録しました。}
+  - name: 再照会でマイナス在庫が表示される（D-16：新 UI は桁制限なし）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '90000027'}
+    expect:
+      fields: {F-STOCKQTY: -5}
+      msg: null
+db:
+  ITEM_MST: unchanged
+  STOCK:
+    rows:
+      - {ITEM_CD: '90000027', STOCK_QTY: -5, UPD_TMS: '@now'}
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

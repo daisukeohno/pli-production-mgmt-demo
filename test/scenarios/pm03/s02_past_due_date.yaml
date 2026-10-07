@@ -1,0 +1,28 @@
+id: PM03-S02
+category: supplemental
+title: 完成予定日が過去日でも登録できる（チェックしない）
+screen: PM03
+rules: [R7]
+decisions: [D-13]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  # 2026-01-01 はシステム日付より過去だが D-13 でチェックしない。採番 '26' = SEQ_YY → 3 → W260003
+  - name: 完成予定日 2026-01-01 → M013、W260003
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000021', F-ORDERQTY: '3', F-DUEDATE: '2026-01-01'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/10/07}
+      fields: {F-ITEMNM: 精密減速機ユニットB型, F-ORDERNO: W260003}
+      msg: {id: M013, text: 製造指示を登録しました。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER:
+    rows:
+      - {WORK_ORDER_NO: W260003, ITEM_CD: '10000021', ORDER_QTY: 3, DUE_DATE: '2026-01-01', STATUS: '0', CRT_TMS: '@now'}
+  SEQ_CTL:
+    rows:
+      - {SEQ_NAME: WORK_ORDER, SEQ_YY: '26', SEQ_NO: 3}

@@ -1,0 +1,30 @@
+id: PM01-S03
+category: supplemental
+title: PF9（旧・一括出力）はデッドコード
+screen: PM01
+rules: [R4]
+decisions: [D-09]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  - name: 初期表示 → PF9 のボタンは無い（一括出力は実装しない）
+    action:
+      key: START
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      page: 1
+      controls: {PF7: false, PF8: true, PF9: false}
+      msg: null
+  - name: 物理 F9 キーを押しても何も起きない（メッセージなし・出力なし・頁も変わらない）
+    action:
+      key: PF9
+    expect:
+      page: 1
+      controls: {PF7: false, PF8: true, PF9: false}
+      msg: null
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

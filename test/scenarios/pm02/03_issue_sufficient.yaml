@@ -1,0 +1,27 @@
+id: PM02-03
+category: golden
+design_ref: PM02-3
+title: 出庫登録（在庫十分）
+screen: PM02
+rules: [R5]
+decisions: [D-19]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  # 200 − 50 = 150 ≥ 0 → 区分に関係なく出庫可
+  - name: 20000059 を出庫 50 → M012、在庫 150
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000059', F-IOKBN: '2', F-IOQTY: '50'}
+    expect:
+      header: {title: PM02 在庫照会・入出庫登録, date: 2026/10/07}
+      fields: {F-ITEMNM: ベアリング6204, F-STOCKQTY: 150}
+      msg: {id: M012, text: 入出庫を登録しました。}
+db:
+  ITEM_MST: unchanged
+  STOCK:
+    rows:
+      - {ITEM_CD: '20000059', STOCK_QTY: 150, UPD_TMS: '@now'}
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

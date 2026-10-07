@@ -1,0 +1,67 @@
+id: PM02-S01
+category: supplemental
+title: 入力チェック（必須・数字以外・数量不正・区分不正・未登録・STOCK 行なし）
+screen: PM02
+rules: []
+decisions: [D-19, D-21]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given:
+  ITEM_MST:
+    insert:   # ITEM_MST にだけあり STOCK 行が無い品目（D-19）
+      - {ITEM_CD: '20000127', ITEM_NAME: カップリング, ITEM_KBN: '2', STOCK_UNIT: 個, DEL_FLG: '0', UPD_TMS: '2026-10-01-09.00.00.000000', CRT_TMS: '2026-10-01-09.00.00.000000'}
+steps:
+  - name: 品目コード未入力で照会 → M004
+    action:
+      key: ENTER
+      input: {F-ITEMCD: ''}
+    expect:
+      header: {title: PM02 在庫照会・入出庫登録, date: 2026/10/07}
+      msg: {id: M004, text: 必須項目が未入力です。}
+  - name: 入出庫区分あり・数量未入力 → M004
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000035', F-IOKBN: '1', F-IOQTY: ''}
+    expect:
+      msg: {id: M004, text: 必須項目が未入力です。}
+  - name: 数量に英字（1O）→ M008
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000035', F-IOKBN: '1', F-IOQTY: '1O'}
+    expect:
+      msg: {id: M008, text: 数値項目に数字以外が入力されています。}
+  - name: 数量 0 → M009
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000035', F-IOKBN: '1', F-IOQTY: '0'}
+    expect:
+      msg: {id: M009, text: 在庫数量が不正です。}
+  - name: 入出庫区分 3 → M010
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000035', F-IOKBN: '3', F-IOQTY: '10'}
+    expect:
+      msg: {id: M010, text: 入出庫区分は1(入庫)または2(出庫)を入力してください。}
+  - name: 未登録の 20000134 を照会 → M002
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000134'}
+    expect:
+      msg: {id: M002, text: 該当する品目は登録されていません。}
+  - name: STOCK 行の無い 20000127 を照会 → M002（D-19）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000127'}
+    expect:
+      msg: {id: M002, text: 該当する品目は登録されていません。}
+  - name: STOCK 行の無い 20000127 に入庫 → M002（STOCK 行は作らない）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000127', F-IOKBN: '1', F-IOQTY: '10'}
+    expect:
+      msg: {id: M002, text: 該当する品目は登録されていません。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

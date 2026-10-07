@@ -1,0 +1,49 @@
+id: PM03-S01
+category: supplemental
+title: 入力チェック（必須・数字以外・数量 0・BOM なし・削除済み製品）
+screen: PM03
+rules: []
+decisions: [D-13, D-14, D-21]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given:
+  ITEM_MST:
+    update:
+      - {key: {ITEM_CD: '10000021'}, set: {DEL_FLG: '1'}}
+steps:
+  - name: 指示数量未入力 → M004
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '', F-DUEDATE: '2026-12-01'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/10/07}
+      msg: {id: M004, text: 必須項目が未入力です。}
+  - name: 指示数量に英字 5A → M008
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '5A', F-DUEDATE: '2026-12-01'}
+    expect:
+      msg: {id: M008, text: 数値項目に数字以外が入力されています。}
+  - name: 指示数量 0 → M008（D-13）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '0', F-DUEDATE: '2026-12-01'}
+    expect:
+      msg: {id: M008, text: 数値項目に数字以外が入力されています。}
+  - name: 部品 20000028（BOM の親でない）→ M014（D-14：区分チェックはしない）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '20000028', F-ORDERQTY: '10', F-DUEDATE: '2026-12-01'}
+    expect:
+      msg: {id: M014, text: 部品構成が登録されていません。}
+  - name: 論理削除済みの製品 10000021 → M002（C-8）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000021', F-ORDERQTY: '10', F-DUEDATE: '2026-12-01'}
+    expect:
+      msg: {id: M002, text: 該当する品目は登録されていません。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged
