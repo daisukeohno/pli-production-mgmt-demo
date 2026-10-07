@@ -25,6 +25,7 @@ src/
   pli/      PL/Iソース
 docs/
   design.md 内部作業メモ（保守引継ぎ用。後日削除予定）
+frontend/   移行後の新UI（React + TypeScript + Vite + shadcn/ui）。frontend/README.md 参照
 ```
 
 ## 現状について
