@@ -1,0 +1,37 @@
+id: PM03-03
+category: golden
+design_ref: PM03-3
+title: 歩留まり率による切り上げ計算の確認（端数あり）
+screen: PM03
+rules: [R6]
+decisions: [D-15]
+tags: [yield-fraction]
+clock: '2026-10-07T10:00:00+09:00'
+given:
+  STOCK:
+    update:
+      - {key: {ITEM_CD: '20000035'}, set: {STOCK_QTY: 105}}
+steps:
+  # R6 製品 10000014 × 50（カタログ R6 の例）
+  #   20000011:  50 × 1.00 ÷ 1.00 = 50                → 50  ≤ 在庫 120
+  #   20000035:  50 × 2.00 ÷ 0.95 = 105.263…          → 106 > 在庫 105 不足  ← 切り捨て・四捨五入なら 105 で不足にならない
+  #   20000059:  50 × 2.00 ÷ 0.98 = 102.040…          → 103 ≤ 在庫 200
+  #   20000073:  50 × 1.00 ÷ 1.00 = 50                → 50  ≤ 在庫 300
+  - name: 製品 10000014 を 50 台 → M015
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '50', F-DUEDATE: '2026-12-01'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/10/07}
+      msg: {id: M015, text: 在庫不足の部品があります。23行目にPF4で一覧を表示します。}
+  - name: PF4 → 必要数は切り上げた 106
+    action:
+      key: PF4
+    expect:
+      ng_list:
+        - ['20000035', 106, 105]
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

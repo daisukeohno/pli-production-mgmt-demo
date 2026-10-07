@@ -1,0 +1,32 @@
+id: PM01-03
+category: golden
+design_ref: PM01-3
+title: 品目登録（チェックデジット不正→M001）
+screen: PM01
+rules: [R1]
+decisions: [D-21]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  # 20000128: 先頭7桁 2000012 の正しいチェックデジットは 7（PM01-02 の計算参照）。8 桁目 8 ≠ 7 → M001
+  - name: 機能2（登録）でチェックデジット不正の 20000128 → M001
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: '20000128', F-ITEMNM: カップリング, F-KBN: '2', F-UNIT: 個}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      msg: {id: M001, text: 品目コードが不正です。チェックデジットを確認してください。}
+  # 20000074: 先頭7桁 2 0 0 0 0 0 7 → 2×3 + 7×3 = 6 + 21 = 27、27 MOD 10 = 7 → (10 − 7) MOD 10 = 3
+  #   8 桁目 4 ≠ 3 → M001（更新でも R1 を検証。D-21: 形式チェック M001 は存在チェック M002 より先）
+  - name: 機能3（更新）でチェックデジット不正の 20000074 → M001
+    action:
+      key: ENTER
+      input: {F-FUNC: '3', F-ITEMCD: '20000074', F-ITEMNM: オイルシール, F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M001, text: 品目コードが不正です。チェックデジットを確認してください。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

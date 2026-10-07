@@ -1,0 +1,37 @@
+id: PM03-B02
+category: boundary
+title: 歩留率で割り切れる場合は切り上げない
+screen: PM03
+rules: [R6]
+decisions: []
+tags: [yield-exact]
+clock: '2026-10-07T10:00:00+09:00'
+given:
+  STOCK:
+    update:
+      - {key: {ITEM_CD: '20000035'}, set: {STOCK_QTY: 119}}
+steps:
+  # 製品 10000014 × 57
+  #   20000011:  57 × 1.00 ÷ 1.00 = 57                → 57  ≤ 在庫 120
+  #   20000035:  57 × 2.00 ÷ 0.95 = 114 ÷ 0.95 = 120.00（割り切れる）→ 120 > 在庫 119 不足（121 にしないこと）
+  #   20000059:  57 × 2.00 ÷ 0.98 = 116.326…          → 117 ≤ 在庫 200
+  #   20000073:  57 × 1.00 ÷ 1.00 = 57                → 57  ≤ 在庫 300
+  #   割り切れるケースで 1 多く切り上げないこと（新側は DEC 相当の十進演算で計算する）
+  - name: 製品 10000014 を 57 台 → M015
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '57', F-DUEDATE: '2026-12-01'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/10/07}
+      msg: {id: M015, text: 在庫不足の部品があります。23行目にPF4で一覧を表示します。}
+  - name: PF4 → 必要数 120
+    action:
+      key: PF4
+    expect:
+      ng_list:
+        - ['20000035', 120, 119]
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

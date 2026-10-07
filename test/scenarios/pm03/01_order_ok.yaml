@@ -1,0 +1,35 @@
+id: PM03-01
+category: golden
+design_ref: PM03-1
+title: 製造指示登録（在庫十分、正常登録）
+screen: PM03
+rules: [R6, R7]
+decisions: [D-04, D-05, D-15]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  # R6 必要数 = CEIL(指示数量 × 員数 ÷ (歩留まり率 ÷ 100))  製品 10000014 × 20
+  #   20000011: 20 × 1.00 ÷ 1.00 = 20                → 20  ≤ 在庫 120
+  #   20000035: 20 × 2.00 ÷ 0.95 = 42.105…           → 43  ≤ 在庫 60
+  #   20000059: 20 × 2.00 ÷ 0.98 = 40.816…           → 41  ≤ 在庫 200
+  #   20000073: 20 × 1.00 ÷ 1.00 = 20                → 20  ≤ 在庫 300
+  #   → 不足なし
+  # R7 採番: システム日付 2026 → 下2桁 '26' = SEQ_YY '26' → SEQ_NO 2 + 1 = 3 → 'W' + '26' + '0003' = W260003
+  - name: 製品 10000014 を 20 台、完成予定日 2026-12-01 で登録 → M013、W260003
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '20', F-DUEDATE: '2026-12-01'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/10/07}
+      fields: {F-ITEMNM: 精密減速機ユニットA型, F-ORDERNO: W260003}
+      msg: {id: M013, text: 製造指示を登録しました。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged   # D-15: 製造指示登録で在庫は減算しない
+  WORK_ORDER:
+    rows:
+      - {WORK_ORDER_NO: W260003, ITEM_CD: '10000014', ORDER_QTY: 20, DUE_DATE: '2026-12-01', STATUS: '0', CRT_TMS: '@now'}
+  SEQ_CTL:
+    rows:
+      - {SEQ_NAME: WORK_ORDER, SEQ_YY: '26', SEQ_NO: 3}

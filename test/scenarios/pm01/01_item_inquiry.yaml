@@ -1,0 +1,31 @@
+id: PM01-01
+category: golden
+design_ref: PM01-1
+title: 品目照会（正常系）
+screen: PM01
+rules: []
+decisions: [D-12]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  - name: 機能1（照会）で部品 20000073 を照会
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000073'}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}   # C-4: 表示は YYYY/MM/DD
+      fields: {F-ITEMCD: '20000073', F-ITEMNM: オイルシール, F-KBN: '2', F-UNIT: 個}
+      msg: null   # D-12: 照会成功時のメッセージは定義なし → 空白
+  - name: 機能1（照会）で消耗品 90000010 を照会
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '90000010'}
+    expect:
+      fields: {F-ITEMCD: '90000010', F-ITEMNM: 潤滑グリース, F-KBN: '9', F-UNIT: KG}
+      msg: null
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

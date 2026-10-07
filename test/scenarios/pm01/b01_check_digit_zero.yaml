@@ -1,0 +1,33 @@
+id: PM01-B01
+category: boundary
+title: チェックデジット 0（(10 − 0) MOD 10 = 0 の境界）
+screen: PM01
+rules: [R1]
+decisions: [D-01]
+tags: [check-digit-zero]
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  # 先頭7桁 2 0 0 0 0 1 1 → 2×3 + 1×1 + 1×3 = 6 + 1 + 3 = 10
+  #   10 MOD 10 = 0 → (10 − 0) = 10 → 10 MOD 10 = 0 → 8 桁目は 0 → 20000110 は正常
+  #   （外側の MOD 10 を落とすと「10」になり正常コードを弾く。D-01 の CHAR(WK-CHK,1) 問題も 0 で顕在化しやすい）
+  - name: 機能2（登録）で 20000110 → M005
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: '20000110', F-ITEMNM: スペーサー, F-KBN: '2', F-UNIT: 個}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      msg: {id: M005, text: 登録しました。}
+  - name: 同じ先頭 7 桁で 8 桁目 1 の 20000111 → M001
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: '20000111', F-ITEMNM: スペーサー, F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M001, text: 品目コードが不正です。チェックデジットを確認してください。}
+db:
+  ITEM_MST:
+    rows:
+      - {ITEM_CD: '20000110', ITEM_NAME: スペーサー, ITEM_KBN: '2', STOCK_UNIT: 個, DEL_FLG: '0', UPD_TMS: '@now', CRT_TMS: '@now'}
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

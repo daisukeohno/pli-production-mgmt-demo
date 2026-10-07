@@ -1,0 +1,40 @@
+id: PM03-B04
+category: boundary
+title: 連番 9999 の次は採番エラー（M018・暫定）
+screen: PM03
+rules: [R7]
+decisions: [D-06]
+tags: [seq-limit]
+clock: '2026-10-07T10:00:00+09:00'
+given:
+  SEQ_CTL:
+    update:
+      - {key: {SEQ_NAME: WORK_ORDER}, set: {SEQ_NO: 9998}}
+steps:
+  # '26' = SEQ_YY → SEQ_NO 9998 + 1 = 9999 → W269999（4 桁に収まる最後の番号）
+  - name: SEQ_NO=9998 から登録 → W269999
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '1', F-DUEDATE: '2026-12-01'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/10/07}
+      fields: {F-ORDERNO: W269999}
+      msg: {id: M013, text: 製造指示を登録しました。}
+  # '26' = SEQ_YY → SEQ_NO 9999 + 1 = 10000 > 9999 → M018（新規メッセージ。messages_ext.yaml）
+  #   WORK_ORDER_NO CHAR(7) に収まらないため登録しない。SEQ_CTL の UPDATE もロールバックして 9999 のまま
+  - name: 続けて登録 → M018（登録しない）
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '1', F-DUEDATE: '2026-12-01'}
+    expect:
+      fields: {F-ORDERNO: ''}
+      msg: {id: M018, text: 製造指示番号の連番が上限(9999)に達しました。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER:
+    rows:
+      - {WORK_ORDER_NO: W269999, ITEM_CD: '10000014', ORDER_QTY: 1, DUE_DATE: '2026-12-01', STATUS: '0', CRT_TMS: '@now'}
+  SEQ_CTL:
+    rows:
+      - {SEQ_NAME: WORK_ORDER, SEQ_YY: '26', SEQ_NO: 9999}

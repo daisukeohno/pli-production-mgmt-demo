@@ -1,0 +1,50 @@
+id: PM03-04
+category: golden
+design_ref: PM03-4
+title: 製造指示番号の年度またぎ採番確認
+screen: PM03
+rules: [R7]
+decisions: [D-04, D-05]
+tags: [year-rollover]
+clock: '2026-12-31T23:59:59+09:00'
+given: {}
+steps:
+  # 2026-12-31: 下2桁 '26' = SEQ_YY '26' → SEQ_NO 2 + 1 = 3 → W260003
+  - name: 2026-12-31 23:59:59 に登録 → W260003
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '1', F-DUEDATE: '2027-01-15'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2026/12/31}
+      fields: {F-ORDERNO: W260003}
+      msg: {id: M013, text: 製造指示を登録しました。}
+  # 2027-01-04: 下2桁 '27' ≠ SEQ_YY '26' → SEQ_YY = '27'、SEQ_NO = 1 → W270001（d-seq-year）
+  - name: 年が明けた 2027-01-04 に登録 → W270001（連番を 1 から振り直す）
+    clock: '2027-01-04T09:00:00+09:00'
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000014', F-ORDERQTY: '1', F-DUEDATE: '2027-02-01'}
+    expect:
+      header: {title: PM03 製造指示登録, date: 2027/01/04}
+      fields: {F-ORDERNO: W270001}
+      msg: {id: M013, text: 製造指示を登録しました。}
+  # 2027-01-04: '27' = SEQ_YY '27' → SEQ_NO 1 + 1 = 2 → W270002
+  - name: 続けて登録 → W270002
+    clock: '2027-01-04T09:05:00+09:00'
+    action:
+      key: ENTER
+      input: {F-ITEMCD: '10000021', F-ORDERQTY: '1', F-DUEDATE: '2027-02-10'}
+    expect:
+      fields: {F-ITEMNM: 精密減速機ユニットB型, F-ORDERNO: W270002}
+      msg: {id: M013, text: 製造指示を登録しました。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER:
+    rows:
+      - {WORK_ORDER_NO: W260003, ITEM_CD: '10000014', ORDER_QTY: 1, DUE_DATE: '2027-01-15', STATUS: '0', CRT_TMS: '@now'}
+      - {WORK_ORDER_NO: W270001, ITEM_CD: '10000014', ORDER_QTY: 1, DUE_DATE: '2027-02-01', STATUS: '0', CRT_TMS: '@now'}
+      - {WORK_ORDER_NO: W270002, ITEM_CD: '10000021', ORDER_QTY: 1, DUE_DATE: '2027-02-10', STATUS: '0', CRT_TMS: '@now'}
+  SEQ_CTL:
+    rows:
+      - {SEQ_NAME: WORK_ORDER, SEQ_YY: '27', SEQ_NO: 2}

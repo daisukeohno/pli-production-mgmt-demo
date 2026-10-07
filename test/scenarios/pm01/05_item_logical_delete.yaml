@@ -1,0 +1,57 @@
+id: PM01-05
+category: golden
+design_ref: PM01-5
+title: 品目削除（論理削除後、一覧に出ないことを確認）
+screen: PM01
+rules: [R2, R3]
+decisions: []
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  - name: 機能1（照会）で 20000028 を照会（削除前に UPD_TMS を退避）
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000028'}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      fields: {F-ITEMNM: ハウジングケース, F-KBN: '2', F-UNIT: 個}
+      msg: null
+  - name: 機能4（削除）→ M007（DEL_FLG='1' に UPDATE。DELETE 文は使わない）
+    action:
+      key: ENTER
+      input: {F-FUNC: '4', F-ITEMCD: '20000028'}
+    expect:
+      msg: {id: M007, text: 削除しました。}
+  - name: 初期表示の一覧 1 頁目に 20000028 が出ない（有効 14 件のうち先頭 10 件）
+    action:
+      key: START
+    expect:
+      page: 1
+      list:
+        - ['10000014', 精密減速機ユニットA型, '1']
+        - ['10000021', 精密減速機ユニットB型, '1']
+        - ['20000011', 主軸アセンブリ, '2']
+        - ['20000035', 歯車セットA, '2']
+        - ['20000042', 歯車セットB, '2']
+        - ['20000059', ベアリング6204, '2']
+        - ['20000066', ベアリング6205, '2']
+        - ['20000073', オイルシール, '2']
+        - ['20000080', 固定ボルトセット, '2']
+        - ['20000097', 端子台, '2']
+      controls: {PF7: false, PF8: true}
+      msg: null
+  - name: 削除済み品目の照会は M002（C-8：DEL_FLG='1' は存在しない扱い）
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000028'}
+    expect:
+      msg: {id: M002, text: 該当する品目は登録されていません。}
+db:
+  ITEM_MST:
+    rows:
+      # 行は物理的に残り DEL_FLG のみ '1'。UPD_TMS は削除時刻
+      - {ITEM_CD: '20000028', ITEM_NAME: ハウジングケース, ITEM_KBN: '2', STOCK_UNIT: 個, DEL_FLG: '1', UPD_TMS: '@now', CRT_TMS: '2015-04-01-09.00.00.000000'}
+  STOCK: unchanged   # STOCK 行は残る（FK 先の ITEM_MST 行が残るため）
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

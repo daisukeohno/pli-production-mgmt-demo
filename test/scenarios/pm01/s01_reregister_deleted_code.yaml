@@ -1,0 +1,32 @@
+id: PM01-S01
+category: supplemental
+title: 論理削除済みコードの再登録は M003（再利用不可）
+screen: PM01
+rules: [R2]
+decisions: [D-10]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given:
+  ITEM_MST:
+    update:
+      - {key: {ITEM_CD: '20000028'}, set: {DEL_FLG: '1'}}
+steps:
+  # 20000028: 2 0 0 0 0 0 2 → 2×3 + 2×3 = 12 → 12 MOD 10 = 2 → (10 − 2) MOD 10 = 8 → チェックデジット正常
+  - name: 論理削除済み 20000028 を登録 → 主キーに残っているので M003
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: '20000028', F-ITEMNM: ハウジングケース新, F-KBN: '2', F-UNIT: 個}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      msg: {id: M003, text: 品目コードは既に使用されています。}
+  - name: 有効な 20000073 を登録 → M003
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: '20000073', F-ITEMNM: オイルシール, F-KBN: '2', F-UNIT: 個}
+    expect:
+      msg: {id: M003, text: 品目コードは既に使用されています。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

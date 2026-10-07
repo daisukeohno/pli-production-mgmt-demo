@@ -1,0 +1,37 @@
+id: PM01-02
+category: golden
+design_ref: PM01-2
+title: 品目登録（チェックデジット正常）
+screen: PM01
+rules: [R1]
+decisions: [D-01, D-19]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  # R1 チェックデジット計算（モジュラス10・ウェイト3-1）
+  #   先頭7桁 2 0 0 0 0 1 2 × ウェイト 3 1 3 1 3 1 3
+  #   = 2×3 + 0×1 + 0×3 + 0×1 + 0×3 + 1×1 + 2×3 = 6 + 0 + 0 + 0 + 0 + 1 + 6 = 13
+  #   13 MOD 10 = 3 → (10 − 3) MOD 10 = 7 → 正しい 8 桁目は 7 → 20000127 は正常
+  - name: 機能2（登録）で 20000127 カップリングを登録
+    action:
+      key: ENTER
+      input: {F-FUNC: '2', F-ITEMCD: '20000127', F-ITEMNM: カップリング, F-KBN: '2', F-UNIT: 個}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      msg: {id: M005, text: 登録しました。}
+  - name: 登録した品目を照会できる
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000127'}
+    expect:
+      fields: {F-ITEMCD: '20000127', F-ITEMNM: カップリング, F-KBN: '2', F-UNIT: 個}
+      msg: null
+db:
+  ITEM_MST:
+    rows:
+      # INSERT: DEL_FLG='0'（既定値）、UPD_TMS / CRT_TMS = 登録時の現在時刻
+      - {ITEM_CD: '20000127', ITEM_NAME: カップリング, ITEM_KBN: '2', STOCK_UNIT: 個, DEL_FLG: '0', UPD_TMS: '@now', CRT_TMS: '@now'}
+  STOCK: unchanged   # 品目登録で STOCK 行は作らない（D-19: STOCK 行なしは PM02 で M002）
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged

@@ -1,0 +1,41 @@
+id: PM01-S02
+category: supplemental
+title: 照会なし・別コードでの更新／削除は M017
+screen: PM01
+rules: [R3]
+decisions: [D-11]
+tags: []
+clock: '2026-10-07T10:00:00+09:00'
+given: {}
+steps:
+  - name: 照会せずに機能3（更新）→ CA01-UPD-TMS が空なので M017
+    action:
+      key: ENTER
+      input: {F-FUNC: '3', F-ITEMCD: '20000073', F-ITEMNM: オイルシールX, F-KBN: '2', F-UNIT: 個}
+    expect:
+      header: {title: PM01 品目マスタ保守, date: 2026/10/07}
+      msg: {id: M017, text: 他の端末で更新されています。再照会してください。}
+  - name: 20000073 を照会
+    action:
+      key: ENTER
+      input: {F-FUNC: '1', F-ITEMCD: '20000073'}
+    expect:
+      fields: {F-ITEMNM: オイルシール}
+      msg: null
+  - name: 照会と別の 20000080 を更新 → M017
+    action:
+      key: ENTER
+      input: {F-FUNC: '3', F-ITEMCD: '20000080', F-ITEMNM: 固定ボルトセットX, F-KBN: '2', F-UNIT: 組}
+    expect:
+      msg: {id: M017, text: 他の端末で更新されています。再照会してください。}
+  - name: 照会と別の 20000080 を削除 → M017
+    action:
+      key: ENTER
+      input: {F-FUNC: '4', F-ITEMCD: '20000080'}
+    expect:
+      msg: {id: M017, text: 他の端末で更新されています。再照会してください。}
+db:
+  ITEM_MST: unchanged
+  STOCK: unchanged
+  WORK_ORDER: unchanged
+  SEQ_CTL: unchanged
