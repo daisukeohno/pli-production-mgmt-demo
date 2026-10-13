@@ -34,6 +34,30 @@ docs/
 （COMMAREA、メッセージ定義、DCLGEN相当、共通ユーティリティ）とDB2定義・初期データのみ
 格納しています。
 
+## 移行版（Spring Boot + React）
+
+PM01 品目マスタ保守を Spring Boot 3 + React へ 1:1 移行したパイロット実装です。
+
+```
+backend/   Spring Boot 3（controller / service / repository / domain / dto、共通基盤は common/）
+frontend/  React + Vite + TypeScript（PM01 画面）
+test/scenarios/pm01/  docs/design.md §4 の PM01 シナリオ（YAML、ScenarioTest が実 HTTP で実行）
+```
+
+起動（H2 DB2互換モード・インメモリ。起動時に db2/ddl と db2/data、PMMSG.inc を投入）:
+
+```
+cd backend && mvn spring-boot:run          # http://localhost:8080 （Java 17）
+cd frontend && npm install && npm run dev  # http://localhost:5173 （/api は 8080 へプロキシ）
+```
+
+テスト:
+
+```
+cd backend && mvn test     # 単体 + PM01 シナリオ6本（結果: backend/target/scenario-report.md）
+cd frontend && npm test    # 画面テスト（Vitest + Testing Library）
+```
+
 ## 既知の注意事項
 
 - チェックデジットの計算方式はコードを正としてください。運用マニュアルの記載が古い場合があります。

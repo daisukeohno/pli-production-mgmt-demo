@@ -1,0 +1,53 @@
+id: PM01-03
+title: 品目登録（チェックデジット不正→M001）
+spec: docs/design.md §4 PM01-3 / §2 #1
+steps:
+  - name: 末尾が正しいチェックデジット(0)でない 20000111 は M001
+    request:
+      method: POST
+      path: /api/items
+      body: { itemCd: "20000111", itemName: スペーサーリング, itemKbn: "2", stockUnit: 個 }
+    expect:
+      status: 400
+      json:
+        messageId: M001
+        message: 品目コードが不正です。チェックデジットを確認してください。
+        field: itemCd
+  - name: 旧モジュラス11方式なら正しい 20000017 も M001（旧方式は移植しない）
+    request:
+      method: POST
+      path: /api/items
+      body: { itemCd: "20000017", itemName: 旧方式コード, itemKbn: "2", stockUnit: 個 }
+    expect:
+      status: 400
+      json:
+        messageId: M001
+        field: itemCd
+  - name: 品目名も未入力の場合、画面上で先の品目コード（M001）を優先
+    request:
+      method: POST
+      path: /api/items
+      body: { itemCd: "20000111", itemName: "", itemKbn: "2", stockUnit: 個 }
+    expect:
+      status: 400
+      json:
+        messageId: M001
+        field: itemCd
+  - name: 品目コードが正しく品目名が未入力なら M004（カーソルは品目名）
+    request:
+      method: POST
+      path: /api/items
+      body: { itemCd: "20000110", itemName: "", itemKbn: "2", stockUnit: 個 }
+    expect:
+      status: 400
+      json:
+        messageId: M004
+        message: 必須項目が未入力です。
+        field: itemName
+db:
+  - sql: SELECT COUNT(*) AS CNT FROM SANSEKI.ITEM_MST WHERE ITEM_CD IN ('20000111', '20000017', '20000110')
+    rows:
+      - { CNT: "0" }
+  - sql: SELECT COUNT(*) AS CNT FROM SANSEKI.ITEM_MST
+    rows:
+      - { CNT: "15" }

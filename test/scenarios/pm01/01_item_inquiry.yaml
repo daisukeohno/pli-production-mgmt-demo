@@ -1,0 +1,43 @@
+id: PM01-01
+title: 品目照会（正常系）
+spec: docs/design.md §4 PM01-1 / §1 F-FUNC=1
+steps:
+  - name: 初回表示（一覧 1頁目）
+    request: { method: GET, path: /api/items }
+    expect:
+      status: 200
+      json:
+        items.size: 10
+        items[0].itemCd: "10000014"
+        items[0].itemName: 精密減速機ユニットA型
+        items[0].itemKbn: "1"
+  - name: 機能コード1 照会 10000014
+    request: { method: GET, path: /api/items/10000014 }
+    expect:
+      status: 200
+      json:
+        itemCd: "10000014"
+        itemName: 精密減速機ユニットA型
+        itemKbn: "1"
+        stockUnit: 台
+        updTms: 2026-09-01-09.00.00.000000
+  - name: 機能コード1 照会 消耗品 90000010（CHAR 右側空白は除去して返す）
+    request: { method: GET, path: /api/items/90000010 }
+    expect:
+      status: 200
+      json:
+        itemName: 潤滑グリース
+        itemKbn: "9"
+        stockUnit: KG
+  - name: 未登録コードは M002
+    request: { method: GET, path: /api/items/99999995 }
+    expect:
+      status: 404
+      json:
+        messageId: M002
+        message: 該当する品目は登録されていません。
+        field: itemCd
+db:
+  - sql: SELECT COUNT(*) AS CNT FROM SANSEKI.ITEM_MST
+    rows:
+      - { CNT: "15" }

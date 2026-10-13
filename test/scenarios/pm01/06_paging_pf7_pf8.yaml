@@ -1,0 +1,50 @@
+id: PM01-06
+title: PF7/PF8相当のページング
+spec: docs/design.md §4 PM01-6 / §1（10件/頁、品目コード昇順）/ PMCOMM.inc CA01-PAGE-NO・CA01-TOP-ITEM-CD
+# 初期データ 15件（DEL_FLG='0'）。削除済み品目を1件追加し、一覧に出ないことも確認する。
+given:
+  - >-
+    INSERT INTO SANSEKI.ITEM_MST (ITEM_CD, ITEM_NAME, ITEM_KBN, STOCK_UNIT, DEL_FLG, UPD_TMS, CRT_TMS)
+    VALUES ('20000127', '削除済み部品', '2', '個', '1', TIMESTAMP '2026-09-01 09:00:00', TIMESTAMP '2015-04-01 09:00:00')
+steps:
+  - name: 初回表示 1頁目
+    request: { method: GET, path: /api/items }
+    expect:
+      status: 200
+      json:
+        items[*].itemCd: ["10000014", "10000021", "20000011", "20000028", "20000035", "20000042", "20000059", "20000066", "20000073", "20000080"]
+        pageNo: 1
+        topKey: "10000014"
+        hasPrev: false
+        hasNext: true
+    save: { top1: topKey }
+  - name: 1頁目で PF7 → 移動しない
+    request: { method: GET, path: /api/items, query: { move: prev, top: "${top1}", pageNo: 1 } }
+    expect:
+      status: 200
+      json: { pageNo: 1, topKey: "10000014", items.size: 10 }
+  - name: PF8 次頁 → 2頁目（残り5件、削除済み 20000127 は出ない）
+    request: { method: GET, path: /api/items, query: { move: next, top: "${top1}", pageNo: 1 } }
+    expect:
+      status: 200
+      json:
+        items[*].itemCd: ["20000097", "20000103", "90000010", "90000027", "90000034"]
+        pageNo: 2
+        topKey: "20000097"
+        hasPrev: true
+        hasNext: false
+    save: { top2: topKey }
+  - name: 最終頁で PF8 → 移動しない
+    request: { method: GET, path: /api/items, query: { move: next, top: "${top2}", pageNo: 2 } }
+    expect:
+      status: 200
+      json: { pageNo: 2, topKey: "20000097", items.size: 5, hasNext: false }
+  - name: PF7 前頁 → 1頁目へ戻る
+    request: { method: GET, path: /api/items, query: { move: prev, top: "${top2}", pageNo: 2 } }
+    expect:
+      status: 200
+      json:
+        items[*].itemCd: ["10000014", "10000021", "20000011", "20000028", "20000035", "20000042", "20000059", "20000066", "20000073", "20000080"]
+        pageNo: 1
+        hasPrev: false
+        hasNext: true

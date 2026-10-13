@@ -1,0 +1,34 @@
+:root {
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Meiryo', system-ui, sans-serif;
+  color: #1f2937;
+  background: #f3f4f6;
+}
+body { margin: 0; }
+.screen { max-width: 760px; margin: 24px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+.screen-header { display: flex; align-items: baseline; gap: 12px; }
+.screen-header h1 { font-size: 1.4rem; margin: 0; flex: 1; }
+.screen-id { font-weight: 700; color: #1d4ed8; }
+.screen-date { color: #6b7280; font-variant-numeric: tabular-nums; }
+.card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); padding: 16px; }
+.form-grid { display: grid; grid-template-columns: 120px 1fr; gap: 10px 12px; align-items: center; }
+.form-grid label { font-weight: 600; font-size: 0.9rem; }
+input, select { font: inherit; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; max-width: 320px; }
+input[readonly], select:disabled { background: #f9fafb; color: #6b7280; }
+.field-error { border-color: #dc2626; outline: 2px solid #fecaca; }
+.actions { margin-top: 14px; display: flex; gap: 8px; }
+button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
+button.primary { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+button:disabled { opacity: 0.45; cursor: default; }
+.list { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.list th { text-align: left; border-bottom: 2px solid #e5e7eb; padding: 6px 8px; color: #4b5563; }
+.list td { border-bottom: 1px solid #f3f4f6; padding: 5px 8px; height: 22px; }
+.list tbody tr:not(.empty) { cursor: pointer; }
+.list tbody tr:not(.empty):hover { background: #eff6ff; }
+.list tr.selected { background: #dbeafe; }
+.mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; }
+.pager { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 12px; }
+.msg-line { min-height: 1.6em; padding: 10px 14px; border-radius: 6px; background: #fff; border-left: 4px solid #d1d5db; }
+.msg-line.info { border-left-color: #16a34a; background: #f0fdf4; }
+.msg-line.error { border-left-color: #dc2626; background: #fef2f2; color: #991b1b; }
+.msg-id { font-weight: 700; margin-right: 8px; }
+.pf-guide { color: #6b7280; font-size: 0.85rem; }

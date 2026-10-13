@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: pm-backend
+  datasource:
+    # DB2 互換モード。起動のたびに db2/ddl + db2/data から再構築する（LegacyDatabaseInitializer）
+    url: jdbc:h2:mem:pm;MODE=DB2;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  sql:
+    init:
+      mode: never
+
+server:
+  port: 8080
+
+pm:
+  db:
+    legacy-location: classpath:legacy

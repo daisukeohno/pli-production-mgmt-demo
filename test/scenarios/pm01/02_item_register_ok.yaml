@@ -1,0 +1,51 @@
+id: PM01-02
+title: 品目登録（チェックデジット正常）
+spec: docs/design.md §4 PM01-2 / §2 #1（PMUTL01 CALC_CHK_DGT）
+# 2000011 -> 2*3 + 1*1 + 1*3 = 10 -> (10 - 10 MOD 10) MOD 10 = 0 -> 20000110
+steps:
+  - name: 機能コード2 登録 20000110
+    request:
+      method: POST
+      path: /api/items
+      body: { itemCd: "20000110", itemName: スペーサーリング, itemKbn: "2", stockUnit: 個 }
+    expect:
+      status: 201
+      json:
+        messageId: M005
+        message: 登録しました。
+        data.itemCd: "20000110"
+        data.itemName: スペーサーリング
+        data.updTms: "=~ \\d{4}-\\d{2}-\\d{2}-\\d{2}\\.\\d{2}\\.\\d{2}\\.\\d{6}"
+    save: { tms: data.updTms }
+  - name: 登録後に照会できる
+    request: { method: GET, path: /api/items/20000110 }
+    expect:
+      status: 200
+      json:
+        itemName: スペーサーリング
+        itemKbn: "2"
+        stockUnit: 個
+        updTms: ${tms}
+  - name: 同じコードで再登録すると M003
+    request:
+      method: POST
+      path: /api/items
+      body: { itemCd: "20000110", itemName: 重複, itemKbn: "2", stockUnit: 個 }
+    expect:
+      status: 409
+      json:
+        messageId: M003
+        field: itemCd
+  - name: 一覧 2頁目に品目コード順で表示される
+    request: { method: GET, path: /api/items, query: { move: next, top: "10000014", pageNo: 1 } }
+    expect:
+      status: 200
+      json:
+        items[*].itemCd: ["20000097", "20000103", "20000110", "90000010", "90000027", "90000034"]
+db:
+  - sql: SELECT ITEM_CD, ITEM_NAME, ITEM_KBN, STOCK_UNIT, DEL_FLG, UPD_TMS, CRT_TMS FROM SANSEKI.ITEM_MST WHERE ITEM_CD = '20000110'
+    rows:
+      - { ITEM_CD: "20000110", ITEM_NAME: スペーサーリング, ITEM_KBN: "2", STOCK_UNIT: 個, DEL_FLG: "0", UPD_TMS: "${tms}", CRT_TMS: "${tms}" }
+  - sql: SELECT COUNT(*) AS CNT FROM SANSEKI.ITEM_MST
+    rows:
+      - { CNT: "16" }
