@@ -1,0 +1,44 @@
+id: PM01-05
+title: 品目削除（論理削除後に一覧から消える）
+spec: docs/design.md §4 PM01-5 / §2 #2（DEL_FLG='1'、一覧・照会は DEL_FLG='0' のみ）
+steps:
+  - name: 削除前の一覧 1頁目に 20000073 がある
+    request: { method: GET, path: /api/items }
+    expect:
+      status: 200
+      json:
+        items[*].itemCd: ["10000014", "10000021", "20000011", "20000028", "20000035", "20000042", "20000059", "20000066", "20000073", "20000080"]
+  - name: 照会（UPD_TMS 取得）
+    request: { method: GET, path: /api/items/20000073 }
+    expect: { status: 200 }
+    save: { tms: updTms }
+  - name: 機能コード4 削除
+    request: { method: DELETE, path: /api/items/20000073, query: { updTms: "${tms}" } }
+    expect:
+      status: 200
+      json:
+        messageId: M007
+        message: 削除しました。
+  - name: 一覧 1頁目から消え、後続の品目が繰り上がる
+    request: { method: GET, path: /api/items }
+    expect:
+      status: 200
+      json:
+        items[*].itemCd: ["10000014", "10000021", "20000011", "20000028", "20000035", "20000042", "20000059", "20000066", "20000080", "20000097"]
+  - name: 照会は M002
+    request: { method: GET, path: /api/items/20000073 }
+    expect:
+      status: 404
+      json: { messageId: M002, field: itemCd }
+  - name: 再削除も M002
+    request: { method: DELETE, path: /api/items/20000073, query: { updTms: "${tms}" } }
+    expect:
+      status: 404
+      json: { messageId: M002 }
+db:
+  - sql: SELECT ITEM_CD, ITEM_NAME, DEL_FLG FROM SANSEKI.ITEM_MST WHERE ITEM_CD = '20000073'
+    rows:
+      - { ITEM_CD: "20000073", ITEM_NAME: オイルシール, DEL_FLG: "1" }
+  - sql: SELECT COUNT(*) AS CNT FROM SANSEKI.ITEM_MST
+    rows:
+      - { CNT: "15" }

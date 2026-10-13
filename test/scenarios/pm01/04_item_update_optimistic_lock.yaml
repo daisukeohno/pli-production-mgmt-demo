@@ -1,0 +1,59 @@
+id: PM01-04
+title: 品目更新（UPD_TMS不一致→M017）
+spec: docs/design.md §4 PM01-4 / §2 #3（照会時に CA01-UPD-TMS へ退避、更新直前に再比較）
+steps:
+  - name: 端末A 照会
+    request: { method: GET, path: /api/items/20000059 }
+    expect: { status: 200, json: { itemName: ベアリング6204 } }
+    save: { tmsA: updTms }
+  - name: 端末B 照会
+    request: { method: GET, path: /api/items/20000059 }
+    expect: { status: 200 }
+    save: { tmsB: updTms }
+  - name: 端末B 更新（成功、UPD_TMS が進む）
+    request:
+      method: PUT
+      path: /api/items/20000059
+      body: { itemName: ベアリング6204ZZ, itemKbn: "2", stockUnit: 個, updTms: "${tmsB}" }
+    expect:
+      status: 200
+      json:
+        messageId: M006
+        message: 更新しました。
+        data.itemName: ベアリング6204ZZ
+        data.updTms: "!= ${tmsB}"
+    save: { tmsB2: data.updTms }
+  - name: 端末A 照会時の UPD_TMS で更新 → M017
+    request:
+      method: PUT
+      path: /api/items/20000059
+      body: { itemName: ベアリング6204-2RS, itemKbn: "2", stockUnit: 個, updTms: "${tmsA}" }
+    expect:
+      status: 409
+      json:
+        messageId: M017
+        message: 他の端末で更新されています。再照会してください。
+  - name: 端末A 照会時の UPD_TMS で削除 → M017
+    request: { method: DELETE, path: /api/items/20000059, query: { updTms: "${tmsA}" } }
+    expect:
+      status: 409
+      json: { messageId: M017 }
+  - name: 端末A 再照会すると端末Bの更新内容と新しい UPD_TMS
+    request: { method: GET, path: /api/items/20000059 }
+    expect:
+      status: 200
+      json: { itemName: ベアリング6204ZZ, updTms: "${tmsB2}" }
+    save: { tmsA2: updTms }
+  - name: 端末A 再照会後の UPD_TMS なら更新できる
+    request:
+      method: PUT
+      path: /api/items/20000059
+      body: { itemName: ベアリング6204-2RS, itemKbn: "2", stockUnit: 個, updTms: "${tmsA2}" }
+    expect:
+      status: 200
+      json: { messageId: M006 }
+    save: { tmsA3: data.updTms }
+db:
+  - sql: SELECT ITEM_NAME, DEL_FLG, UPD_TMS FROM SANSEKI.ITEM_MST WHERE ITEM_CD = '20000059'
+    rows:
+      - { ITEM_NAME: ベアリング6204-2RS, DEL_FLG: "0", UPD_TMS: "${tmsA3}" }
