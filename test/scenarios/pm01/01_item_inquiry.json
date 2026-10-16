@@ -1,0 +1,39 @@
+{
+  "id": "PM01-01",
+  "title": "品目照会（正常系）",
+  "screen": "PM01",
+  "description": "機能コード1で既存品目を照会し、品目名・区分・単位と楽観排他用の UPD_TMS（CA01-UPD-TMS）が返ること。未登録コードは M002。",
+  "steps": [
+    {
+      "name": "機能コード1・品目コード 20000011 で照会（ENTER）",
+      "request": { "method": "GET", "path": "/api/pm01/items/20000011" },
+      "expect": {
+        "status": 200,
+        "body": {
+          "itemCd": "20000011",
+          "itemName": "主軸アセンブリ",
+          "itemKbn": "2",
+          "stockUnit": "個",
+          "updTms": "2026-09-01-09.00.00.000000",
+          "msgId": null
+        }
+      }
+    },
+    {
+      "name": "製品区分の品目 10000014 も照会できる（CHAR 末尾空白はトリムされる）",
+      "request": { "method": "GET", "path": "/api/pm01/items/10000014" },
+      "expect": {
+        "status": 200,
+        "body": { "itemCd": "10000014", "itemName": "精密減速機ユニットA型", "itemKbn": "1", "stockUnit": "台" }
+      }
+    },
+    {
+      "name": "未登録の品目コード 99999999 → M002",
+      "request": { "method": "GET", "path": "/api/pm01/items/99999999" },
+      "expect": {
+        "status": 404,
+        "body": { "msgId": "M002", "msgText": "該当する品目は登録されていません。", "field": "itemCd", "fieldPos": 2 }
+      }
+    }
+  ]
+}

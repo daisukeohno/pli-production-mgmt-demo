@@ -1,0 +1,7 @@
+# シナリオテスト実行用プロファイル。DB 初期化 API を有効化する。
+spring:
+  flyway:
+    clean-disabled: false
+pm:
+  test-support:
+    enabled: true

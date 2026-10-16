@@ -1,0 +1,75 @@
+{
+  "id": "PM01-04",
+  "title": "品目更新（他端末更新で UPD_TMS 不一致→M017）",
+  "screen": "PM01",
+  "description": "端末A・端末Bが同じ品目を照会し、端末Bが先に更新（M006）。端末Aが照会時の UPD_TMS（CA01-UPD-TMS）で更新すると M017 となり、DB は端末Bの内容のまま。再照会後は更新できること。",
+  "steps": [
+    {
+      "name": "端末A：機能コード1で 20000035 を照会（UPD_TMS を保持）",
+      "request": { "method": "GET", "path": "/api/pm01/items/20000035" },
+      "expect": { "status": 200, "body": { "itemCd": "20000035", "itemName": "歯車セットA", "updTms": "2026-09-01-09.00.00.000000" } },
+      "capture": { "tmsA": "updTms" }
+    },
+    {
+      "name": "端末B：同じ 20000035 を照会",
+      "request": { "method": "GET", "path": "/api/pm01/items/20000035" },
+      "expect": { "status": 200 },
+      "capture": { "tmsB": "updTms" }
+    },
+    {
+      "name": "端末B：機能コード3で品目名を「歯車セットA改」に更新 → M006",
+      "request": {
+        "method": "PUT",
+        "path": "/api/pm01/items/20000035",
+        "body": { "itemCd": "20000035", "itemName": "歯車セットA改", "itemKbn": "2", "stockUnit": "組", "updTms": "${tmsB}" }
+      },
+      "expect": {
+        "status": 200,
+        "body": { "itemName": "歯車セットA改", "msgId": "M006", "msgText": "更新しました。" },
+        "assert": [ { "path": "updTms", "notEquals": "${tmsB}" } ]
+      },
+      "capture": { "tmsAfterB": "updTms" }
+    },
+    {
+      "name": "端末A：照会時の UPD_TMS のまま機能コード3で更新 → M017",
+      "request": {
+        "method": "PUT",
+        "path": "/api/pm01/items/20000035",
+        "body": { "itemCd": "20000035", "itemName": "歯車セットA（端末A）", "itemKbn": "2", "stockUnit": "組", "updTms": "${tmsA}" }
+      },
+      "expect": {
+        "status": 409,
+        "body": { "msgId": "M017", "msgText": "他の端末で更新されています。再照会してください。", "field": "itemCd", "fieldPos": 2 }
+      }
+    },
+    {
+      "name": "DB は端末Bの更新内容のまま（端末Aの更新は反映されない）",
+      "request": { "method": "GET", "path": "/api/pm01/items/20000035" },
+      "expect": { "status": 200, "body": { "itemName": "歯車セットA改", "updTms": "${tmsAfterB}" } }
+    },
+    {
+      "name": "端末A：UPD_TMS を保持せずに更新（照会なし）→ M017",
+      "request": {
+        "method": "PUT",
+        "path": "/api/pm01/items/20000035",
+        "body": { "itemCd": "20000035", "itemName": "歯車セットA（端末A）", "itemKbn": "2", "stockUnit": "組" }
+      },
+      "expect": { "status": 409, "body": { "msgId": "M017" } }
+    },
+    {
+      "name": "端末A：再照会して最新の UPD_TMS を取得",
+      "request": { "method": "GET", "path": "/api/pm01/items/20000035" },
+      "expect": { "status": 200 },
+      "capture": { "tmsA2": "updTms" }
+    },
+    {
+      "name": "端末A：再照会後の UPD_TMS で更新 → M006",
+      "request": {
+        "method": "PUT",
+        "path": "/api/pm01/items/20000035",
+        "body": { "itemCd": "20000035", "itemName": "歯車セットA（端末A）", "itemKbn": "2", "stockUnit": "組", "updTms": "${tmsA2}" }
+      },
+      "expect": { "status": 200, "body": { "itemName": "歯車セットA（端末A）", "msgId": "M006" } }
+    }
+  ]
+}

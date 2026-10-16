@@ -1,0 +1,77 @@
+{
+  "id": "PM01-05",
+  "title": "品目削除（論理削除後、一覧に出ないこと）",
+  "screen": "PM01",
+  "description": "機能コード4で 20000073 を削除（M007）。DEL_FLG='1' への更新のみで行は残り（物理削除しない）、照会は M002、一覧（全頁）から除外されること。",
+  "steps": [
+    {
+      "name": "機能コード1で 20000073 を照会（UPD_TMS を保持）",
+      "request": { "method": "GET", "path": "/api/pm01/items/20000073" },
+      "expect": { "status": 200, "body": { "itemCd": "20000073", "itemName": "オイルシール" } },
+      "capture": { "tms": "updTms" }
+    },
+    {
+      "name": "削除前の一覧1頁目に 20000073 がある",
+      "request": { "method": "GET", "path": "/api/pm01/items" },
+      "expect": { "status": 200, "assert": [ { "path": "rows[*].itemCd", "contains": "20000073" } ] }
+    },
+    {
+      "name": "機能コード4で削除 → M007",
+      "request": { "method": "DELETE", "path": "/api/pm01/items/20000073?updTms=${tms}" },
+      "expect": { "status": 200, "body": { "itemCd": "20000073", "msgId": "M007", "msgText": "削除しました。" } }
+    },
+    {
+      "name": "DB の行は残り DEL_FLG='1'（論理削除）",
+      "request": { "method": "GET", "path": "/api/test-support/item-mst/20000073" },
+      "expect": { "status": 200, "body": [ { "item_cd": "20000073", "item_name": "オイルシール              ", "del_flg": "1" } ] }
+    },
+    {
+      "name": "削除済み品目の照会 → M002",
+      "request": { "method": "GET", "path": "/api/pm01/items/20000073" },
+      "expect": { "status": 404, "body": { "msgId": "M002", "field": "itemCd" } }
+    },
+    {
+      "name": "一覧1頁目に出ない（後続の品目が繰り上がり10件）",
+      "request": { "method": "GET", "path": "/api/pm01/items" },
+      "expect": {
+        "status": 200,
+        "body": { "pageNo": 1, "hasPrev": false, "hasNext": true },
+        "assert": [
+          { "path": "rows[*].itemCd", "notContains": "20000073" },
+          { "path": "rows[*].itemCd", "equals": ["10000014", "10000021", "20000011", "20000028", "20000035", "20000042", "20000059", "20000066", "20000080", "20000097"] }
+        ]
+      }
+    },
+    {
+      "name": "一覧2頁目（PF8）にも出ない",
+      "request": { "method": "GET", "path": "/api/pm01/items?cursor=10000014&pageNo=1&move=next" },
+      "expect": {
+        "status": 200,
+        "body": { "pageNo": 2, "hasNext": false },
+        "assert": [
+          { "path": "rows[*].itemCd", "notContains": "20000073" },
+          { "path": "rows[*].itemCd", "equals": ["20000103", "90000010", "90000027", "90000034"] }
+        ]
+      }
+    },
+    {
+      "name": "削除済みの UPD_TMS で再削除 → M002（有効な行が無い）",
+      "request": { "method": "DELETE", "path": "/api/pm01/items/20000073?updTms=${tms}" },
+      "expect": { "status": 404, "body": { "msgId": "M002" } }
+    },
+    {
+      "name": "論理削除された品目コードは主キーとして残るため再登録不可 → M003",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": { "itemCd": "20000073", "itemName": "オイルシール", "itemKbn": "2", "stockUnit": "個" }
+      },
+      "expect": { "status": 409, "body": { "msgId": "M003" } }
+    },
+    {
+      "name": "別の品目を古い UPD_TMS で削除 → M017（削除も楽観排他）",
+      "request": { "method": "DELETE", "path": "/api/pm01/items/20000080?updTms=2026-08-31-09.00.00.000000" },
+      "expect": { "status": 409, "body": { "msgId": "M017" } }
+    }
+  ]
+}
