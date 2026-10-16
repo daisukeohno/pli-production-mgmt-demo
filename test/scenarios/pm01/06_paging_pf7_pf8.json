@@ -1,0 +1,523 @@
+{
+  "id": "PM01-06",
+  "title": "前頁/次頁ページング確認（PF7/PF8）",
+  "screen": "PM01",
+  "description": "一覧は10件/頁・品目コード順。頁先頭の品目コード（CA01-TOP-ITEM-CD）を cursor として送り返し、PF8=move=next / PF7=move=prev で双方向に移動する。初期15件（2頁）と、6件登録後の21件（3頁）で確認。",
+  "steps": [
+    {
+      "name": "初期表示：1頁目は品目コード順に10件（運用マニュアルの20件/頁ではない）",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "10000014",
+          "pageNo": 1,
+          "hasPrev": false,
+          "hasNext": true,
+          "rows": [
+            {
+              "itemCd": "10000014",
+              "itemName": "精密減速機ユニットA型",
+              "itemKbn": "1"
+            },
+            {
+              "itemCd": "10000021",
+              "itemName": "精密減速機ユニットB型",
+              "itemKbn": "1"
+            },
+            {
+              "itemCd": "20000011",
+              "itemName": "主軸アセンブリ",
+              "itemKbn": "2"
+            },
+            {
+              "itemCd": "20000028",
+              "itemName": "ハウジングケース",
+              "itemKbn": "2"
+            },
+            {
+              "itemCd": "20000035",
+              "itemName": "歯車セットA",
+              "itemKbn": "2"
+            },
+            {
+              "itemCd": "20000042",
+              "itemName": "歯車セットB",
+              "itemKbn": "2"
+            },
+            {
+              "itemCd": "20000059",
+              "itemName": "ベアリング6204",
+              "itemKbn": "2"
+            },
+            {
+              "itemCd": "20000066",
+              "itemName": "ベアリング6205",
+              "itemKbn": "2"
+            },
+            {
+              "itemCd": "20000073",
+              "itemName": "オイルシール",
+              "itemKbn": "2"
+            },
+            {
+              "itemCd": "20000080",
+              "itemName": "固定ボルトセット",
+              "itemKbn": "2"
+            }
+          ]
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "10000014",
+              "10000021",
+              "20000011",
+              "20000028",
+              "20000035",
+              "20000042",
+              "20000059",
+              "20000066",
+              "20000073",
+              "20000080"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "PF8（次頁）：2頁目は残り5件",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items?cursor=${cursor}&pageNo=${pageNo}&move=next"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "20000097",
+          "pageNo": 2,
+          "hasPrev": true,
+          "hasNext": false
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "20000097",
+              "20000103",
+              "90000010",
+              "90000027",
+              "90000034"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "最終頁で PF8：頁は移動しない",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items?cursor=${cursor}&pageNo=${pageNo}&move=next"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "20000097",
+          "pageNo": 2,
+          "hasNext": false
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "20000097",
+              "20000103",
+              "90000010",
+              "90000027",
+              "90000034"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "PF7（前頁）：1頁目へ戻る",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items?cursor=${cursor}&pageNo=${pageNo}&move=prev"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "10000014",
+          "pageNo": 1,
+          "hasPrev": false,
+          "hasNext": true
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "10000014",
+              "10000021",
+              "20000011",
+              "20000028",
+              "20000035",
+              "20000042",
+              "20000059",
+              "20000066",
+              "20000073",
+              "20000080"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "先頭頁で PF7：頁は移動しない",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items?cursor=${cursor}&pageNo=${pageNo}&move=prev"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "10000014",
+          "pageNo": 1,
+          "hasPrev": false
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "10000014",
+              "10000021",
+              "20000011",
+              "20000028",
+              "20000035",
+              "20000042",
+              "20000059",
+              "20000066",
+              "20000073",
+              "20000080"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "3頁構成にするため品目 30000018 を登録",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": {
+          "itemCd": "30000018",
+          "itemName": "追加部品01",
+          "itemKbn": "2",
+          "stockUnit": "個"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "msgId": "M005"
+        }
+      }
+    },
+    {
+      "name": "3頁構成にするため品目 30000025 を登録",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": {
+          "itemCd": "30000025",
+          "itemName": "追加部品02",
+          "itemKbn": "2",
+          "stockUnit": "個"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "msgId": "M005"
+        }
+      }
+    },
+    {
+      "name": "3頁構成にするため品目 30000032 を登録",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": {
+          "itemCd": "30000032",
+          "itemName": "追加部品03",
+          "itemKbn": "2",
+          "stockUnit": "個"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "msgId": "M005"
+        }
+      }
+    },
+    {
+      "name": "3頁構成にするため品目 30000049 を登録",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": {
+          "itemCd": "30000049",
+          "itemName": "追加部品04",
+          "itemKbn": "2",
+          "stockUnit": "個"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "msgId": "M005"
+        }
+      }
+    },
+    {
+      "name": "3頁構成にするため品目 30000056 を登録",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": {
+          "itemCd": "30000056",
+          "itemName": "追加部品05",
+          "itemKbn": "2",
+          "stockUnit": "個"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "msgId": "M005"
+        }
+      }
+    },
+    {
+      "name": "3頁構成にするため品目 30000063 を登録",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": {
+          "itemCd": "30000063",
+          "itemName": "追加部品06",
+          "itemKbn": "2",
+          "stockUnit": "個"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "msgId": "M005"
+        }
+      }
+    },
+    {
+      "name": "21件になった一覧の1頁目",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "10000014",
+          "pageNo": 1,
+          "hasPrev": false,
+          "hasNext": true
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "10000014",
+              "10000021",
+              "20000011",
+              "20000028",
+              "20000035",
+              "20000042",
+              "20000059",
+              "20000066",
+              "20000073",
+              "20000080"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "PF8：2頁目（10件、登録した品目がコード順に入る）",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items?cursor=${cursor}&pageNo=${pageNo}&move=next"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "20000097",
+          "pageNo": 2,
+          "hasPrev": true,
+          "hasNext": true
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "20000097",
+              "20000103",
+              "30000018",
+              "30000025",
+              "30000032",
+              "30000049",
+              "30000056",
+              "30000063",
+              "90000010",
+              "90000027"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "PF8：3頁目（1件）",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items?cursor=${cursor}&pageNo=${pageNo}&move=next"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "90000034",
+          "pageNo": 3,
+          "hasPrev": true,
+          "hasNext": false
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "90000034"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "PF7：3頁目→2頁目",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items?cursor=${cursor}&pageNo=${pageNo}&move=prev"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "20000097",
+          "pageNo": 2,
+          "hasPrev": true,
+          "hasNext": true
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "20000097",
+              "20000103",
+              "30000018",
+              "30000025",
+              "30000032",
+              "30000049",
+              "30000056",
+              "30000063",
+              "90000010",
+              "90000027"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    },
+    {
+      "name": "PF7：2頁目→1頁目",
+      "request": {
+        "method": "GET",
+        "path": "/api/pm01/items?cursor=${cursor}&pageNo=${pageNo}&move=prev"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "cursor": "10000014",
+          "pageNo": 1,
+          "hasPrev": false,
+          "hasNext": true
+        },
+        "assert": [
+          {
+            "path": "rows[*].itemCd",
+            "equals": [
+              "10000014",
+              "10000021",
+              "20000011",
+              "20000028",
+              "20000035",
+              "20000042",
+              "20000059",
+              "20000066",
+              "20000073",
+              "20000080"
+            ]
+          }
+        ]
+      },
+      "capture": {
+        "cursor": "cursor",
+        "pageNo": "pageNo"
+      }
+    }
+  ]
+}

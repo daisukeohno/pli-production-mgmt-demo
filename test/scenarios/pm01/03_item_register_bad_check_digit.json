@@ -1,0 +1,57 @@
+{
+  "id": "PM01-03",
+  "title": "品目登録（チェックデジット不正→M001）",
+  "screen": "PM01",
+  "description": "末尾チェックデジットが不正な品目コードは M001 で登録されず、カーソルは品目コード（CA-MSG-FLD-POS=2）。旧モジュラス11方式で正しいコードも不正となること。",
+  "steps": [
+    {
+      "name": "品目コード 20000111（正しい CD は 0）で登録 → M001",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": { "itemCd": "20000111", "itemName": "テスト部品Y", "itemKbn": "2", "stockUnit": "個" }
+      },
+      "expect": {
+        "status": 400,
+        "body": {
+          "msgId": "M001",
+          "msgText": "品目コードが不正です。チェックデジットを確認してください。",
+          "field": "itemCd",
+          "fieldPos": 2
+        }
+      }
+    },
+    {
+      "name": "DB に登録されていない",
+      "request": { "method": "GET", "path": "/api/test-support/item-mst/20000111" },
+      "expect": { "status": 200, "body": [] }
+    },
+    {
+      "name": "旧モジュラス11方式で正しい 20000124（現行方式の CD は 7）→ M001",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": { "itemCd": "20000124", "itemName": "旧方式コード", "itemKbn": "2", "stockUnit": "個" }
+      },
+      "expect": { "status": 400, "body": { "msgId": "M001", "field": "itemCd", "fieldPos": 2 } }
+    },
+    {
+      "name": "数字以外を含む品目コード 2000011A → M001",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": { "itemCd": "2000011A", "itemName": "テスト部品Z", "itemKbn": "2", "stockUnit": "個" }
+      },
+      "expect": { "status": 400, "body": { "msgId": "M001", "field": "itemCd" } }
+    },
+    {
+      "name": "7桁の品目コード 2000011 → M001",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": { "itemCd": "2000011", "itemName": "テスト部品Z", "itemKbn": "2", "stockUnit": "個" }
+      },
+      "expect": { "status": 400, "body": { "msgId": "M001", "field": "itemCd" } }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+services:
+  db:
+    image: mirror.gcr.io/library/postgres:16-alpine
+    container_name: pm-postgres
+    environment:
+      POSTGRES_DB: pmdb
+      POSTGRES_USER: pm
+      POSTGRES_PASSWORD: pm
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pm -d pmdb"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

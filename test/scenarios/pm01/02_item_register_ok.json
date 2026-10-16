@@ -1,0 +1,61 @@
+{
+  "id": "PM01-02",
+  "title": "品目登録（チェックデジット正常）",
+  "screen": "PM01",
+  "description": "機能コード2でチェックデジットが正しい品目コード 20000110（2000011 → CD=0）を登録し M005。DB には CHAR(20) 空白埋め・DEL_FLG='0' で格納され、照会・一覧に現れること。同一コードの再登録は M003。",
+  "steps": [
+    {
+      "name": "機能コード2・品目コード 20000110 / テスト部品X / 区分2 / 個 で登録",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": { "itemCd": "20000110", "itemName": "テスト部品X", "itemKbn": "2", "stockUnit": "個" }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "itemCd": "20000110", "itemName": "テスト部品X", "itemKbn": "2", "stockUnit": "個",
+          "updTms": "~re:\\d{4}-\\d{2}-\\d{2}-\\d{2}\\.\\d{2}\\.\\d{2}\\.\\d{6}",
+          "msgId": "M005", "msgText": "登録しました。"
+        }
+      }
+    },
+    {
+      "name": "DB 上は CHAR 固定長の空白埋め・DEL_FLG='0' で格納されている",
+      "request": { "method": "GET", "path": "/api/test-support/item-mst/20000110" },
+      "expect": {
+        "status": 200,
+        "body": [
+          { "item_cd": "20000110", "item_name": "テスト部品X              ", "item_kbn": "2", "stock_unit": "個   ", "del_flg": "0" }
+        ]
+      }
+    },
+    {
+      "name": "登録した品目を機能コード1で照会できる",
+      "request": { "method": "GET", "path": "/api/pm01/items/20000110" },
+      "expect": { "status": 200, "body": { "itemCd": "20000110", "itemName": "テスト部品X", "itemKbn": "2", "stockUnit": "個" } }
+    },
+    {
+      "name": "一覧の2頁目（PF8）に品目コード順で現れる",
+      "request": { "method": "GET", "path": "/api/pm01/items?cursor=10000014&pageNo=1&move=next" },
+      "expect": {
+        "status": 200,
+        "assert": [
+          { "path": "rows[*].itemCd", "equals": ["20000097", "20000103", "20000110", "90000010", "90000027", "90000034"] }
+        ]
+      }
+    },
+    {
+      "name": "同じ品目コードで再登録 → M003",
+      "request": {
+        "method": "POST",
+        "path": "/api/pm01/items",
+        "body": { "itemCd": "20000110", "itemName": "重複", "itemKbn": "2", "stockUnit": "個" }
+      },
+      "expect": {
+        "status": 409,
+        "body": { "msgId": "M003", "msgText": "品目コードは既に使用されています。", "field": "itemCd", "fieldPos": 2 }
+      }
+    }
+  ]
+}

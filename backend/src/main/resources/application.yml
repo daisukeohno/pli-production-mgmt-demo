@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: pm-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pmdb}
+    username: ${DB_USERNAME:pm}
+    password: ${DB_PASSWORD:pm}
+    hikari:
+      # 現行 DB2 のスキーマ SANSEKI を既定スキーマにする
+      schema: sanseki
+  flyway:
+    schemas: sanseki
+    default-schema: sanseki
+    locations: classpath:db/migration,classpath:jp/co/sanseki/pm/common/db/migration
+
+pm:
+  # 時刻のタイムゾーン（CICS ASKTIME 相当の基準）
+  zone: Asia/Tokyo
+  # シナリオ実行用の DB 初期化 API（/api/test-support/reset）。本番では false。
+  test-support:
+    enabled: false
